@@ -1,7 +1,7 @@
 #ifdef WINDOWS
 	#include <Windows.h>
 	#pragma comment(lib, "crypt32.lib")
-#else
+#elif POSIX
   #include <openssl/evp.h>
 #endif
 

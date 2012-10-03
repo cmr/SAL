@@ -1,10 +1,10 @@
-#include "Time.h"
-
 #ifdef WINDOWS
 	#include <Windows.h>
 #elif POSIX
   #include <sys/time.h>
 #endif
+
+#include "Time.h"
 
 /* Return the current time in ms since January 1, 2012 */
 uint64 SAL_Time_Now() {
