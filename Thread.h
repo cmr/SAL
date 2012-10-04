@@ -13,10 +13,10 @@
 	#include <pthread.h>
 
 	typedef void* (*SAL_Thread_StartAddress)(void* SAL_Thread_StartParameter);
-	typedef pthread_t* SAL_Thread;
+	typedef pthread_t SAL_Thread;
 	
-	typedef pthread_mutex_t* SAL_Mutex;
-	typedef pthread_cond_t* SAL_Event;
+	typedef pthread_mutex_t SAL_Mutex;
+	typedef pthread_cond_t SAL_Event;
 #endif
 
 export SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* startParameter);

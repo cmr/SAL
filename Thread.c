@@ -12,7 +12,7 @@ SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* startPa
 
 		pthread_create(&threadId, null, startAddress, startParameter);
 
-		return &threadId;
+		return threadId;
 	#endif
 }
 
