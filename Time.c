@@ -2,7 +2,7 @@
 
 #ifdef WINDOWS
 	#include <Windows.h>
-#elif POSIX
+#elif defined POSIX
 	#include <sys/time.h>
 #endif
 
