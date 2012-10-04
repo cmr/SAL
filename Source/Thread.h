@@ -1,8 +1,8 @@
 #ifndef SAL_INCLUDE_THREAD
 #define SAL_INCLUDE_THREAD
 
+#include <C-Utilities/Common.h>
 #include "Shared.h"
-#include <C-Utilities/Source/Common.h>
 
 #ifdef WINDOWS
 	typedef unsigned long (__stdcall *SAL_Thread_StartAddress)(void* SAL_Thread_StartParameter);
@@ -23,12 +23,12 @@ export SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* 
 export uint64 SAL_Thread_Join(SAL_Thread thread);
 export void SAL_Thread_Terminate(SAL_Thread thread, uint32 exitCode);
 
-export SAL_Mutex SAL_Mutex_Create();
+export SAL_Mutex SAL_Mutex_Create(void);
 export void SAL_Mutex_Free(SAL_Mutex mutex);
 export void SAL_Mutex_Acquire(SAL_Mutex mutex);
 export void SAL_Mutex_Release(SAL_Mutex mutex);
 
-export SAL_Event SAL_Event_Create();
+export SAL_Event SAL_Event_Create(void);
 export void SAL_Event_Free(SAL_Event event);
 export uint64 SAL_Event_Wait(SAL_Event event);
 export void SAL_Event_Signal(SAL_Event event);
