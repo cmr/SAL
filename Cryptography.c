@@ -1,4 +1,5 @@
-#include "Shared.h"
+#include "Cryptography.h"
+#include "Time.h"
 
 #ifdef WINDOWS
 	#include <Windows.h>
@@ -28,8 +29,8 @@ uint8* SAL_Cryptography_SHA512(uint8* source, uint32 length) {
 
 		return hash;
 	#elif defined POSIX
-    EVP_MD_CTX *ctx = EVP_MD_CTX_create();
-    uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha512()));
+		EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+		uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha512()));
 
 		EVP_DigestInit_ex(ctx, EVP_sha512(), null);
 		EVP_DigestUpdate(ctx, (void*)source, length);
@@ -58,8 +59,8 @@ uint8* SAL_Cryptography_SHA1(uint8* source, uint32 length) {
 
 		return hash;
 	#elif defined POSIX
-    EVP_MD_CTX *ctx = EVP_MD_CTX_create();
-    uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha1()));
+		EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+		uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha1()));
 
 		EVP_DigestInit_ex(ctx, EVP_sha1(), null);
 		EVP_DigestUpdate(ctx, (void*)source, length);

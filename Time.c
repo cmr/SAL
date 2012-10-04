@@ -3,7 +3,7 @@
 #ifdef WINDOWS
 	#include <Windows.h>
 #elif POSIX
-  #include <sys/time.h>
+	#include <sys/time.h>
 #endif
 
 /**
@@ -28,14 +28,14 @@ int64 SAL_Time_Now(void) {
 		return (int64)result;
 	#elif defined POSIX
 		int64 result;
-    struct timeval tv;
+		struct timeval tv;
 
-    gettimeofday(&tv, null);
+		gettimeofday(&tv, null);
 
-    result = tv.tv_sec;
-    result *= 1000000; // convert seconds to microseconds
-    result += tv.tv_usec; // add microseconds
-    result /= 1000; // convert to milliseconds
-    return result;
+		result = tv.tv_sec;
+		result *= 1000000; // convert seconds to microseconds
+		result += tv.tv_usec; // add microseconds
+		result /= 1000; // convert to milliseconds
+		return result;
 	#endif
 }

@@ -1,2 +1,8 @@
 Binaries/*
 Build/*
+
+*.sln
+*.vcxproj
+*.suo
+*.filters
+*.user
