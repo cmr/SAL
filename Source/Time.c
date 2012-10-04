@@ -6,8 +6,13 @@
 
 #include "Time.h"
 
-/* Return the current time in ms since January 1, 2012 */
-uint64 SAL_Time_Now() {
+/**
+ * Return the current time in ms since Jan 1, 1970.
+ *
+ * Does *NOT* take into account leap seconds, but does take into account leap
+ * days.
+ */
+int64 SAL_Time_Now(void) {
 	#ifdef WINDOWS
 		FILETIME time;
 		uint64 result;
@@ -18,9 +23,9 @@ uint64 SAL_Time_Now() {
 		result <<= 32;
 		result += time.dwLowDateTime;
 		result /= 10000; // to shift from 100ns intervals to 1ms intervals
-		result -= 12969849600000; // to shift from epoch of 1/1/1601 to 1/1/2012
+		result -= 11644473600000; // to shift from epoch of 1/1/1601 to 1/1/1970
 
-		return result;
+		return (int64)result;
 	#elif POSIX
 		int64 result;
     struct timeval tv;
@@ -31,10 +36,6 @@ uint64 SAL_Time_Now() {
     result *= 1000000; // convert seconds to microseconds
     result += time.tv_usec; // add microseconds
     result /= 1000; // convert to milliseconds
-    result -= 1325376000000; // shift from epoch of Jan 1 1970 to Jan 1 2012
-    if (result < 0) {
-      // what do we do in this case?
-    }
-    return (uint64)result;
+    return result;
 	#endif
 }

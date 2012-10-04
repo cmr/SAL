@@ -4,6 +4,6 @@
 #include "Shared.h"
 #include <C-Utilities/Common.h>
 
-export uint64 SAL_Time_Now();
+export int64 SAL_Time_Now(void);
 
 #endif
