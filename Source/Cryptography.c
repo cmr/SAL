@@ -1,7 +1,9 @@
+#include "Shared.h"
+
 #ifdef WINDOWS
 	#include <Windows.h>
 	#pragma comment(lib, "crypt32.lib")
-#elif POSIX
+#elif defined POSIX
   #include <openssl/evp.h>
 #endif
 
@@ -28,7 +30,7 @@ uint8* SAL_Cryptography_SHA512(uint8* source, uint32 length) {
 		CryptReleaseContext(provider, 0);
 
 		return hash;
-	#elif POSIX
+	#elif defined POSIX
     EVP_MD_CTX *ctx = EVP_MD_CTX_create();
     uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha512()));
 
@@ -58,7 +60,7 @@ uint8* SAL_Cryptography_SHA1(uint8* source, uint32 length) {
 		CryptReleaseContext(provider, 0);
 
 		return hash;
-	#elif POSIX
+	#elif defined POSIX
     EVP_MD_CTX *ctx = EVP_MD_CTX_create();
     uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha1()));
 
