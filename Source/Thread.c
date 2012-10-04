@@ -38,7 +38,7 @@ void SAL_Thread_Terminate(SAL_Thread thread, uint32 exitCode) {
 	#endif
 }
 
-SAL_Mutex SAL_Mutex_Create() {
+SAL_Mutex SAL_Mutex_Create(void) {
 	#ifdef WINDOWS
 		CRITICAL_SECTION* criticalSection;
 
@@ -75,7 +75,7 @@ void SAL_Mutex_Release(SAL_Mutex mutex) {
 	#endif
 }
 
-SAL_Event SAL_Event_Create() {
+SAL_Event SAL_Event_Create(void) {
 	#ifdef WINDOWS
 		return CreateEvent(null, false, false, null);
 	#elif POSIX
