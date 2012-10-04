@@ -1,7 +1,7 @@
 #ifndef SAL_INCLUDE_THREAD
 #define SAL_INCLUDE_THREAD
 
-#include <C-Utilities/Common.h>
+#include <C-Utilities/Source/Common.h>
 #include "Shared.h"
 
 #ifdef WINDOWS

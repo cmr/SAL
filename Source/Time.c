@@ -1,10 +1,10 @@
+#include "Time.h"
+
 #ifdef WINDOWS
 	#include <Windows.h>
 #elif POSIX
   #include <sys/time.h>
 #endif
-
-#include "Time.h"
 
 /**
  * Return the current time in ms since Jan 1, 1970.

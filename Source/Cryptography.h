@@ -1,7 +1,7 @@
 #ifndef SAL_INCLUDE_CRYPTOGRAPHY
 #define SAL_INCLUDE_CRYPTOGRAPHY
 
-#include <C-Utilities/Common.h>
+#include <C-Utilities/Source/Common.h>
 #include "Shared.h"
 
 export uint8* SAL_Cryptography_SHA512(uint8* source, uint32 length);

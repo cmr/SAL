@@ -1,12 +1,12 @@
+#include "Cryptography.h"
+#include "Time.h"
+
 #ifdef WINDOWS
 	#include <Windows.h>
 	#pragma comment(lib, "crypt32.lib")
 #elif POSIX
   #include <openssl/evp.h>
 #endif
-
-#include "Cryptography.h"
-#include "Time.h"
 
 static boolean seeded = false;
 
@@ -29,14 +29,14 @@ uint8* SAL_Cryptography_SHA512(uint8* source, uint32 length) {
 
 		return hash;
 	#elif POSIX
-    EVP_MD_CTX *ctx = EVP_MD_CTX_create();
-    uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha512()));
+		EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+		uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha512()));
 
-    EVP_DigestInit_ex(ctx, EVP_sha512(), null);
-    EVP_DigestUpdate(ctx, (void*)source, length);
-    EVP_DigestFinal_ex(ctx, (unsigned char*)hash, null);
+		EVP_DigestInit_ex(ctx, EVP_sha512(), null);
+		EVP_DigestUpdate(ctx, (void*)source, length);
+		EVP_DigestFinal_ex(ctx, (unsigned char*)hash, null);
 
-    return hash;
+		return hash;
 	#endif
 }
 
@@ -59,14 +59,14 @@ uint8* SAL_Cryptography_SHA1(uint8* source, uint32 length) {
 
 		return hash;
 	#elif POSIX
-    EVP_MD_CTX *ctx = EVP_MD_CTX_create();
-    uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha1()));
+		EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+		uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha1()));
 
-    EVP_DigestInit_ex(ctx, EVP_sha1(), null);
-    EVP_DigestUpdate(ctx, (void*)source, length);
-    EVP_DigestFinal_ex(ctx, (unsigned char*)hash, null);
+		EVP_DigestInit_ex(ctx, EVP_sha1(), null);
+		EVP_DigestUpdate(ctx, (void*)source, length);
+		EVP_DigestFinal_ex(ctx, (unsigned char*)hash, null);
 
-    return hash;
+		return hash;
 	#endif
 }
 
