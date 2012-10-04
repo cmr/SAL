@@ -9,13 +9,13 @@
 	typedef void* SAL_Thread;
 	typedef void* SAL_Mutex;
 	typedef void* SAL_Event;
-#elif POSIX
+#elif defined POSIX
 	#include <pthread.h>
 
 	typedef void* (*SAL_Thread_StartAddress)(void* SAL_Thread_StartParameter);
 	typedef pthread_t* SAL_Thread;
 	
-	typedef mutex_t* SAL_Mutex;
+	typedef pthread_mutex_t* SAL_Mutex;
 	typedef pthread_cond_t* SAL_Event;
 #endif
 

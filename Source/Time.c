@@ -26,15 +26,15 @@ int64 SAL_Time_Now(void) {
 		result -= 11644473600000; // to shift from epoch of 1/1/1601 to 1/1/1970
 
 		return (int64)result;
-	#elif POSIX
+	#elif defined POSIX
 		int64 result;
     struct timeval tv;
 
     gettimeofday(&tv, null);
 
-    result = time.tv_sec;
+    result = tv.tv_sec;
     result *= 1000000; // convert seconds to microseconds
-    result += time.tv_usec; // add microseconds
+    result += tv.tv_usec; // add microseconds
     result /= 1000; // convert to milliseconds
     return result;
 	#endif

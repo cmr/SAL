@@ -1,10 +1,10 @@
-#ifndef SAL_INCLUDE_COMMON
-#define SAL_INCLUDE_COMMON
+#ifndef SAL_INCLUDE_SHARED
+#define SAL_INCLUDE_SHARED
 
 #ifdef _WIN64
-	#define WINDOWS
+  #define WINDOWS
 #elif __unix__
-	#define POSIX
+  #define POSIX
 #endif
 
 #endif
