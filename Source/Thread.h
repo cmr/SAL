@@ -2,7 +2,7 @@
 #define SAL_INCLUDE_THREAD
 
 #include <C-Utilities/Source/Common.h>
-#include "Shared.h"
+#include "Common.h"
 
 #ifdef WINDOWS
 	typedef unsigned long (__stdcall *SAL_Thread_StartAddress)(void* SAL_Thread_StartParameter);

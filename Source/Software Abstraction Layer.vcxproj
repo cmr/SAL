@@ -95,7 +95,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Cryptography.h" />
-    <ClInclude Include="Shared.h" />
+    <ClInclude Include="Common.h" />
     <ClInclude Include="Sockets.h" />
     <ClInclude Include="Thread.h" />
     <ClInclude Include="Time.h" />
