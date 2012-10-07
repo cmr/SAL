@@ -31,16 +31,16 @@ SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* startPa
  *
  * @returns 0 on success, non-0 on failure.
  */
-int SAL_Thread_Join(SAL_Thread thread) {
+uint64 SAL_Thread_Join(SAL_Thread thread) {
 	#ifdef WINDOWS
 		DWORD result;
 
 		result = WaitForSingleObject(thread, INFINITE);
 		CloseHandle(thread);
 
-		return result;
+		return (uint64)result;
 	#elif defined POSIX
-		return pthread_join(thread, null);
+		return (uint64)pthread_join(thread, null);
 	#endif
 }
 
