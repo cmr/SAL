@@ -1,3 +1,7 @@
+/** @file Time.c
+ * @brief Functions for getting the current time.
+ */
+
 #include "Time.h"
 
 #ifdef WINDOWS
