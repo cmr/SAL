@@ -1,3 +1,7 @@
+/** @file Thread.c
+ * @brief Threading functions and synchronization primitives.
+ */
+
 #include "Thread.h"
 
 #ifdef WINDOWS

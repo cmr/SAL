@@ -1,3 +1,7 @@
+/** @file Cryptography.c
+ * @brief Cryptographic functions (hashes, random numbers)
+ */
+
 #include "Cryptography.h"
 #include "Time.h"
 
@@ -10,6 +14,13 @@
 
 static boolean seeded = false;
 
+/**
+ * Hash a block of memory using SHA512.
+ *
+ * @param source [in] pointer to block of memory to hash
+ * @param length [in] number of bytes from source to hash.
+ * @returns pointer to digest (64 bytes in length)
+ */
 uint8* SAL_Cryptography_SHA512(uint8* source, uint32 length) {
 	#ifdef WINDOWS
 		HCRYPTPROV provider = 0;
@@ -40,10 +51,17 @@ uint8* SAL_Cryptography_SHA512(uint8* source, uint32 length) {
 	#endif
 }
 
+/**
+ * Hash a block of memory using SHA-1
+ *
+ * @param source [in] pointer to block of memory to hash
+ * @param length [in] number of bytes from source to hash.
+ * @returns pointer to digest (20 bytes in length)
+ */
 uint8* SAL_Cryptography_SHA1(uint8* source, uint32 length) {
 	#ifdef WINDOWS
-	    HCRYPTPROV provider = 0;
-		HCRYPTHASH hasher = 0;
+    HCRYPTPROV provider = 0;
+    HCRYPTHASH hasher = 0;
 		DWORD hashLength;
 		uint8* hash;
     
@@ -70,6 +88,12 @@ uint8* SAL_Cryptography_SHA1(uint8* source, uint32 length) {
 	#endif
 }
 
+/**
+ * Generate pseudorandom bytes.
+ *
+ * @param count [in] number of bytes to generate
+ * @return pointer to @a count bytes.
+ */
 uint8* SAL_Cryptography_RandomBytes(uint64 count) {
 	uint8* bytes = null;
 	
@@ -88,6 +112,13 @@ uint8* SAL_Cryptography_RandomBytes(uint64 count) {
 	return bytes;
 }
 
+/**
+ * Generate a 4 byte pseudorandom value.
+ *
+ * @param floor [in] Lower bound of random value
+ * @param ceiling [in] Upper bound of random value
+ * @return 4 pseudorandom bytes
+ */
 uint32 SAL_Cryptography_RandomUInt32(uint32 floor, uint32 ceiling) {
 	uint32 result;
 	
@@ -100,6 +131,13 @@ uint32 SAL_Cryptography_RandomUInt32(uint32 floor, uint32 ceiling) {
 	return result;
 }
 
+/**
+ * Generate a 2 byte pseudorandom value.
+ *
+ * @param floor [in] Lower bound of random value
+ * @param ceiling [in] Upper bound of random value
+ * @return 2 pseudorandom bytes
+ */
 uint16 SAL_Cryptography_RandomUInt16(uint16 floor, uint16 ceiling) {
 	uint16 result;
 	
@@ -112,6 +150,13 @@ uint16 SAL_Cryptography_RandomUInt16(uint16 floor, uint16 ceiling) {
 	return result;
 }
 
+/**
+ * Generate a 1 byte pseudorandom value.
+ *
+ * @param floor [in] Lower bound of random value
+ * @param ceiling [in] Upper bound of random value
+ * @return 1 pseudorandom byte
+ */
 uint8 SAL_Cryptography_RandomUInt8(uint8 floor, uint8 ceiling) {
 	uint8 result;
 	
