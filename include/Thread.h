@@ -11,20 +11,21 @@
 	typedef void* SAL_Event;
 #elif defined POSIX
 	#include <pthread.h>
+  #include <errno.h>
 
 	typedef void* (*SAL_Thread_StartAddress)(void* SAL_Thread_StartParameter);
 	typedef pthread_t SAL_Thread;
 	
-	typedef pthread_mutex_t SAL_Mutex;
-	typedef pthread_cond_t SAL_Event;
+	typedef pthread_mutex_t* SAL_Mutex;
+	typedef pthread_cond_t* SAL_Event;
 #endif
 
 export SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* startParameter);
-export uint64 SAL_Thread_Join(SAL_Thread thread);
+export int SAL_Thread_Join(SAL_Thread thread);
 export void SAL_Thread_Terminate(SAL_Thread thread, uint32 exitCode);
 
 export SAL_Mutex SAL_Mutex_Create(void);
-export void SAL_Mutex_Free(SAL_Mutex mutex);
+export uint8 SAL_Mutex_Free(SAL_Mutex mutex);
 export void SAL_Mutex_Acquire(SAL_Mutex mutex);
 export void SAL_Mutex_Release(SAL_Mutex mutex);
 
