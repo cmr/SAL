@@ -2,6 +2,8 @@
  * @brief Cryptographic functions (hashes, random numbers)
  */
 
+#include <math.h>
+
 #include "Cryptography.h"
 #include "Time.h"
 
@@ -9,7 +11,7 @@
 	#include <Windows.h>
 	#pragma comment(lib, "crypt32.lib")
 #elif defined POSIX
-  #include <openssl/evp.h>
+	#include <openssl/evp.h>
 #endif
 
 static boolean seeded = false;
@@ -32,20 +34,25 @@ uint8* SAL_Cryptography_SHA512(uint8* source, uint32 length) {
 		CryptCreateHash(provider, CALG_SHA_512, 0, 0, &hasher);
 		CryptHashData(hasher, source, length, 0);
 
+
 		hash = AllocateArray(uint8, 64);
 		CryptGetHashParam(hasher, HP_HASHVAL, hash, &hashLength, 0);
 
+
 		CryptDestroyHash(hasher);
 		CryptReleaseContext(provider, 0);
+
 
 		return hash;
 	#elif defined POSIX
 		EVP_MD_CTX *ctx = EVP_MD_CTX_create();
 		uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha512()));
 
+
 		EVP_DigestInit_ex(ctx, EVP_sha512(), null);
 		EVP_DigestUpdate(ctx, (void*)source, length);
-		EVP_DigestFinal_ex(ctx, (unsigned char*)hash, null);
+		EVP_DigestFinal_ex(ctx, (uint8*)hash, null);
+
 
 		return hash;
 	#endif
@@ -60,33 +67,39 @@ uint8* SAL_Cryptography_SHA512(uint8* source, uint32 length) {
  */
 uint8* SAL_Cryptography_SHA1(uint8* source, uint32 length) {
 	#ifdef WINDOWS
-    HCRYPTPROV provider = 0;
-    HCRYPTHASH hasher = 0;
+	    HCRYPTPROV provider = 0;
+		HCRYPTHASH hasher = 0;
 		DWORD hashLength;
 		uint8* hash;
     
 		CryptAcquireContext(&provider, null, null, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
 		CryptCreateHash(provider, CALG_SHA1, 0, 0, &hasher);
 		CryptHashData(hasher, source, length, 0);
-	
+
+
 		hash = AllocateArray(uint8, 20);
 		CryptGetHashParam(hasher, HP_HASHVAL, hash, &hashLength, 0);
 
+
 		CryptDestroyHash(hasher);
 		CryptReleaseContext(provider, 0);
+
 
 		return hash;
 	#elif defined POSIX
 		EVP_MD_CTX *ctx = EVP_MD_CTX_create();
 		uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha1()));
 
+
 		EVP_DigestInit_ex(ctx, EVP_sha1(), null);
 		EVP_DigestUpdate(ctx, (void*)source, length);
-		EVP_DigestFinal_ex(ctx, (unsigned char*)hash, null);
+		EVP_DigestFinal_ex(ctx, (uint8*)hash, null);
+
 
 		return hash;
 	#endif
 }
+
 
 /**
  * Generate pseudorandom bytes.
@@ -95,21 +108,28 @@ uint8* SAL_Cryptography_SHA1(uint8* source, uint32 length) {
  * @return pointer to @a count bytes.
  */
 uint8* SAL_Cryptography_RandomBytes(uint64 count) {
-	uint8* bytes = null;
-	
+	uint32 *bytes = null;
+	uint8 rem = count % 4;
+	uint8 i;
+
 	if (count > 0) {
-		bytes = AllocateArray(uint8, count);
+		bytes = AllocateArray(uint32, (count / 4) + rem); // Integer division rounds towards 0, count % 4 is the remainder
 
 		if (!seeded) {
 			srand( (uint32)SAL_Time_Now() );
 			seeded = true;
 		}
 
-		while (count--)
-			bytes[count - 1] = rand() % 256;
+		for (; count > 3; count -= 4) 
+		  *(bytes + count) = (uint32)rand();
+
+
+		for (i = 0; i < rem; i++)
+		  *((uint8*)bytes + i) = (uint8)rand();
+
 	}
 
-	return bytes;
+	return (uint8*)bytes;
 }
 
 /**

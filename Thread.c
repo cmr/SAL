@@ -58,6 +58,20 @@ void SAL_Thread_Exit(uint32 exitCode) {
 }
 
 /**
+ * Terminate the current running thread.
+ *
+ * @param exitCode Return code of the thread
+ * @param thread Thread to forcibly terminate
+ */
+void SAL_Thread_Terminate(SAL_Thread* thread, uint32 exitCode) {
+	#ifdef WINDOWS
+		TerminateThread((HANDLE)thread, exitCode);
+	#elif defined POSIX
+		pthread_exit((void*)&exitCode); //need to make this a proper termination
+	#endif
+}
+
+/**
  * Create a new mutex.
  *
  * The created mutex should be freed with @ref SAL_Mutex_Free as to not leak
@@ -74,9 +88,9 @@ SAL_Mutex SAL_Mutex_Create(void) {
 
 		return (SAL_Mutex)criticalSection;
 	#elif defined POSIX
-    pthread_mutex_t *mutex = Allocate(pthread_mutex_t);
-    pthread_mutex_init(mutex, null);
-    return mutex;
+		pthread_mutex_t *mutex = Allocate(pthread_mutex_t);
+		pthread_mutex_init(mutex, null);
+		return mutex;
 	#endif
 }
 
@@ -95,14 +109,14 @@ SAL_Mutex SAL_Mutex_Create(void) {
 uint8 SAL_Mutex_Free(SAL_Mutex mutex) {
 	#ifdef WINDOWS
 		DeleteCriticalSection((CRITICAL_SECTION*)mutex);
-    return 0; // Windows makes me cry
+		return 0;
 	#elif defined POSIX
-    int status;
-    status = pthread_mutex_destroy(mutex);
-    if (status == EBUSY) {
-      return 1;
-    }
-    return 0;
+		int status;
+		status = pthread_mutex_destroy(mutex);
+		if (status == EBUSY) {
+		  return 1;
+		}
+		return 0;
 	#endif
 }
 
@@ -117,7 +131,7 @@ void SAL_Mutex_Acquire(SAL_Mutex mutex) {
 	#ifdef WINDOWS
 		EnterCriticalSection((CRITICAL_SECTION*)mutex);
 	#elif defined POSIX
-    pthread_mutex_lock(mutex);
+		pthread_mutex_lock(mutex);
 	#endif
 }
 
@@ -130,7 +144,7 @@ void SAL_Mutex_Release(SAL_Mutex mutex) {
 	#ifdef WINDOWS
 		LeaveCriticalSection((CRITICAL_SECTION*)mutex);
 	#elif defined POSIX
-    pthread_mutex_unlock(mutex);
+		pthread_mutex_unlock(mutex);
 	#endif
 }
 
