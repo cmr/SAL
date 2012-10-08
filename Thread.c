@@ -147,6 +147,11 @@ SAL_Semaphore SAL_Semaphore_Create(void) {
 	#endif
 }
 
+/**
+ * Free a semaphore.
+ * 
+ * @param semaphore to free.
+ */
 void SAL_Semaphore_Free(SAL_Semaphore Semaphore) {
 	#ifdef WINDOWS
 		CloseHandle(Semaphore);
@@ -155,6 +160,13 @@ void SAL_Semaphore_Free(SAL_Semaphore Semaphore) {
 	#endif
 }
 
+/**
+ * Decrement a semaphore.
+ * 
+ * @param semaphore to decrement.
+ *
+ * @warning This function will block if the semaphore count is zero.
+ */
 void SAL_Semaphore_Decrement(SAL_Semaphore Semaphore) {
 	#ifdef WINDOWS
 		WaitForSingleObject(Semaphore, INFINITE);
@@ -163,6 +175,11 @@ void SAL_Semaphore_Decrement(SAL_Semaphore Semaphore) {
 	#endif
 }
 
+/**
+ * Increment a semaphore.
+ * 
+ * @param semaphore to increment.
+ */
 void SAL_Semaphore_Increment(SAL_Semaphore Semaphore) {
 	#ifdef WINDOWS
 		ReleaseSemaphore(Semaphore, 1, null);
