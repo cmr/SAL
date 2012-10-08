@@ -105,7 +105,7 @@ uint32 SAL_Cryptography_RandomUInt32(uint32 floor, uint32 ceiling) {
 	}
 	result = rand() % (ceiling - floor) + floor;
 
-	return result;
+	return (uint32)result;
 }
 
 uint16 SAL_Cryptography_RandomUInt16(uint16 floor, uint16 ceiling) {
@@ -117,7 +117,7 @@ uint16 SAL_Cryptography_RandomUInt16(uint16 floor, uint16 ceiling) {
 	}
 	result = rand() % (ceiling - floor) + floor;
 
-	return result;
+	return (uint16)result;
 }
 
 uint8 SAL_Cryptography_RandomUInt8(uint8 floor, uint8 ceiling) {
@@ -129,5 +129,5 @@ uint8 SAL_Cryptography_RandomUInt8(uint8 floor, uint8 ceiling) {
 	}
 	result = rand() % (ceiling - floor) + floor;
 
-	return result;
+	return (uint8)result;
 }
