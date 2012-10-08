@@ -58,20 +58,6 @@ void SAL_Thread_Exit(uint32 exitCode) {
 }
 
 /**
- * Terminate the current running thread.
- *
- * @param exitCode Return code of the thread
- * @param thread Thread to forcibly terminate
- */
-void SAL_Thread_Terminate(SAL_Thread* thread, uint32 exitCode) {
-	#ifdef WINDOWS
-		TerminateThread((HANDLE)thread, exitCode);
-	#elif defined POSIX
-		pthread_exit((void*)&exitCode); //need to make this a proper termination
-	#endif
-}
-
-/**
  * Create a new mutex.
  *
  * The created mutex should be freed with @ref SAL_Mutex_Free as to not leak

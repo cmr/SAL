@@ -1,7 +1,6 @@
 #ifndef SAL_INCLUDE_CRYPTOGRAPHY
 #define SAL_INCLUDE_CRYPTOGRAPHY
 
-#include <C-Utilities/Common.h>
 #include "Common.h"
 
 public uint8* SAL_Cryptography_SHA512(uint8* source, uint32 length);

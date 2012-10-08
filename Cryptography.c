@@ -51,7 +51,7 @@ uint8* SAL_Cryptography_SHA512(uint8* source, uint32 length) {
 
 		EVP_DigestInit_ex(ctx, EVP_sha512(), null);
 		EVP_DigestUpdate(ctx, (void*)source, length);
-		EVP_DigestFinal_ex(ctx, (uint8*)hash, null);
+		EVP_DigestFinal_ex(ctx, (unsigned char*)hash, null);
 
 
 		return hash;
@@ -93,7 +93,7 @@ uint8* SAL_Cryptography_SHA1(uint8* source, uint32 length) {
 
 		EVP_DigestInit_ex(ctx, EVP_sha1(), null);
 		EVP_DigestUpdate(ctx, (void*)source, length);
-		EVP_DigestFinal_ex(ctx, (uint8*)hash, null);
+		EVP_DigestFinal_ex(ctx, (unsigned char*)hash, null);
 
 
 		return hash;
