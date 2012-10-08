@@ -31,7 +31,7 @@ SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* startPa
  *
  * @returns 0 on success, non-0 on failure.
  */
-uint64 SAL_Thread_Join(SAL_Thread thread) {
+int SAL_Thread_Join(SAL_Thread thread) {
 	#ifdef WINDOWS
 		DWORD result;
 
