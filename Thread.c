@@ -16,11 +16,11 @@
  */
 SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* startParameter) {
 	#ifdef WINDOWS
-		return CreateThread(null, 0, startAddress, startParameter, 0, null);
+		return CreateThread(NULL, 0, startAddress, startParameter, 0, NULL);
 	#elif defined POSIX
 		pthread_t threadId;
 
-		pthread_create(&threadId, null, startAddress, startParameter);
+		pthread_create(&threadId, NULL, startAddress, startParameter);
 
 		return threadId;
 	#endif
@@ -40,7 +40,7 @@ uint64 SAL_Thread_Join(SAL_Thread thread) {
 
 		return (uint64)result;
 	#elif defined POSIX
-		return (uint64)pthread_join(thread, null);
+		return (uint64)pthread_join(thread, NULL);
 	#endif
 }
 
@@ -75,7 +75,7 @@ SAL_Mutex SAL_Mutex_Create(void) {
 		return (SAL_Mutex)criticalSection;
 	#elif defined POSIX
 		pthread_mutex_t *mutex = Allocate(pthread_mutex_t);
-		pthread_mutex_init(mutex, null);
+		pthread_mutex_init(mutex, NULL);
 		return mutex;
 	#endif
 }
@@ -141,7 +141,7 @@ void SAL_Mutex_Release(SAL_Mutex mutex) {
  */
 SAL_Semaphore SAL_Semaphore_Create(void) {
 	#ifdef WINDOWS
-		return CreateSemaphore(null, 0, 4294967295, null);
+		return CreateSemaphore(NULL, 0, 4294967295, NULL);
 	#elif defined POSIX
     
 	#endif
@@ -182,7 +182,7 @@ void SAL_Semaphore_Decrement(SAL_Semaphore Semaphore) {
  */
 void SAL_Semaphore_Increment(SAL_Semaphore Semaphore) {
 	#ifdef WINDOWS
-		ReleaseSemaphore(Semaphore, 1, null);
+		ReleaseSemaphore(Semaphore, 1, NULL);
 	#elif defined POSIX
 
 	#endif

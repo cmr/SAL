@@ -30,7 +30,7 @@ uint8* SAL_Cryptography_SHA512(uint8* source, uint32 length) {
 		DWORD hashLength;
 		uint8* hash;
     
-		CryptAcquireContext(&provider, null, null, PROV_RSA_AES, CRYPT_VERIFYCONTEXT);
+		CryptAcquireContext(&provider, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT);
 		CryptCreateHash(provider, CALG_SHA_512, 0, 0, &hasher);
 		CryptHashData(hasher, source, length, 0);
 
@@ -49,9 +49,9 @@ uint8* SAL_Cryptography_SHA512(uint8* source, uint32 length) {
 		uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha512()));
 
 
-		EVP_DigestInit_ex(ctx, EVP_sha512(), null);
+		EVP_DigestInit_ex(ctx, EVP_sha512(), NULL);
 		EVP_DigestUpdate(ctx, (void*)source, length);
-		EVP_DigestFinal_ex(ctx, (unsigned char*)hash, null);
+		EVP_DigestFinal_ex(ctx, (unsigned char*)hash, NULL);
 
 
 		return hash;
@@ -72,7 +72,7 @@ uint8* SAL_Cryptography_SHA1(uint8* source, uint32 length) {
 		DWORD hashLength;
 		uint8* hash;
     
-		CryptAcquireContext(&provider, null, null, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
+		CryptAcquireContext(&provider, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
 		CryptCreateHash(provider, CALG_SHA1, 0, 0, &hasher);
 		CryptHashData(hasher, source, length, 0);
 
@@ -91,9 +91,9 @@ uint8* SAL_Cryptography_SHA1(uint8* source, uint32 length) {
 		uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha1()));
 
 
-		EVP_DigestInit_ex(ctx, EVP_sha1(), null);
+		EVP_DigestInit_ex(ctx, EVP_sha1(), NULL);
 		EVP_DigestUpdate(ctx, (void*)source, length);
-		EVP_DigestFinal_ex(ctx, (unsigned char*)hash, null);
+		EVP_DigestFinal_ex(ctx, (unsigned char*)hash, NULL);
 
 
 		return hash;
@@ -108,7 +108,7 @@ uint8* SAL_Cryptography_SHA1(uint8* source, uint32 length) {
  * @return pointer to @a count bytes.
  */
 uint8* SAL_Cryptography_RandomBytes(uint64 count) {
-	uint32 *bytes = null;
+	uint32 *bytes = NULL;
 	uint8 rem = count % 4;
 	uint8 i;
 
