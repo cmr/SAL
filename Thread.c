@@ -31,7 +31,7 @@ SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* startPa
  *
  * @returns 0 on success, non-0 on failure.
  */
-int SAL_Thread_Join(SAL_Thread thread) {
+uint64 SAL_Thread_Join(SAL_Thread thread) {
 	#ifdef WINDOWS
 		DWORD result;
 
@@ -74,9 +74,9 @@ SAL_Mutex SAL_Mutex_Create(void) {
 
 		return (SAL_Mutex)criticalSection;
 	#elif defined POSIX
-    pthread_mutex_t *mutex = Allocate(pthread_mutex_t);
-    pthread_mutex_init(mutex, null);
-    return mutex;
+		pthread_mutex_t *mutex = Allocate(pthread_mutex_t);
+		pthread_mutex_init(mutex, null);
+		return mutex;
 	#endif
 }
 
@@ -95,14 +95,14 @@ SAL_Mutex SAL_Mutex_Create(void) {
 uint8 SAL_Mutex_Free(SAL_Mutex mutex) {
 	#ifdef WINDOWS
 		DeleteCriticalSection((CRITICAL_SECTION*)mutex);
-    return 0; // Windows makes me cry
+		return 0;
 	#elif defined POSIX
-    int status;
-    status = pthread_mutex_destroy(mutex);
-    if (status == EBUSY) {
-      return 1;
-    }
-    return 0;
+		int status;
+		status = pthread_mutex_destroy(mutex);
+		if (status == EBUSY) {
+		  return 1;
+		}
+		return 0;
 	#endif
 }
 
@@ -117,7 +117,7 @@ void SAL_Mutex_Acquire(SAL_Mutex mutex) {
 	#ifdef WINDOWS
 		EnterCriticalSection((CRITICAL_SECTION*)mutex);
 	#elif defined POSIX
-    pthread_mutex_lock(mutex);
+		pthread_mutex_lock(mutex);
 	#endif
 }
 
@@ -130,46 +130,59 @@ void SAL_Mutex_Release(SAL_Mutex mutex) {
 	#ifdef WINDOWS
 		LeaveCriticalSection((CRITICAL_SECTION*)mutex);
 	#elif defined POSIX
-    pthread_mutex_unlock(mutex);
+		pthread_mutex_unlock(mutex);
 	#endif
 }
 
 /**
- * Create a new event.
+ * Create a new semaphore.
  *
- * @return a new event
+ * @return a new semaphore
  */
-SAL_Event SAL_Event_Create(void) {
+SAL_Semaphore SAL_Semaphore_Create(void) {
 	#ifdef WINDOWS
-		return CreateEvent(null, false, false, null);
+		return CreateSemaphore(null, 0, 4294967295, null);
 	#elif defined POSIX
     
 	#endif
 }
 
-void SAL_Event_Free(SAL_Event event) {
+/**
+ * Free a semaphore.
+ * 
+ * @param semaphore to free.
+ */
+void SAL_Semaphore_Free(SAL_Semaphore Semaphore) {
 	#ifdef WINDOWS
-		CloseHandle(event);
+		CloseHandle(Semaphore);
 	#elif defined POSIX
 
 	#endif
 }
 
-uint64 SAL_Event_Wait(SAL_Event event) {
+/**
+ * Decrement a semaphore.
+ * 
+ * @param semaphore to decrement.
+ *
+ * @warning This function will block if the semaphore count is zero.
+ */
+void SAL_Semaphore_Decrement(SAL_Semaphore Semaphore) {
 	#ifdef WINDOWS
-		DWORD result;
-		
-		result = WaitForSingleObject(event, INFINITE);
-
-		return result;
+		WaitForSingleObject(Semaphore, INFINITE);
 	#elif defined POSIX
 
 	#endif
 }
 
-void SAL_Event_Signal(SAL_Event event) {
+/**
+ * Increment a semaphore.
+ * 
+ * @param semaphore to increment.
+ */
+void SAL_Semaphore_Increment(SAL_Semaphore Semaphore) {
 	#ifdef WINDOWS
-		SetEvent(event);
+		ReleaseSemaphore(Semaphore, 1, null);
 	#elif defined POSIX
 
 	#endif

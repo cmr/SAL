@@ -1,0 +1,36 @@
+#ifndef SAL_INCLUDE_THREAD
+#define SAL_INCLUDE_THREAD
+
+#include "Common.h"
+
+#ifdef WINDOWS
+	typedef unsigned long (__stdcall *SAL_Thread_StartAddress)(void* SAL_Thread_StartParameter);
+	typedef void* SAL_Thread;
+	typedef void* SAL_Mutex;
+	typedef void* SAL_Semaphore;
+#elif defined POSIX
+	#include <pthread.h>
+	#include <errno.h>
+    
+	typedef void* (*SAL_Thread_StartAddress)(void* SAL_Thread_StartParameter);
+	typedef pthread_t SAL_Thread;
+	
+	typedef pthread_mutex_t* SAL_Mutex;
+    typedef pthread_cond_t* SAL_Semaphore;
+#endif
+
+public SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* startParameter);
+public uint64 SAL_Thread_Join(SAL_Thread thread);
+public void SAL_Thread_Exit(uint32 exitCode);
+
+public SAL_Mutex SAL_Mutex_Create(void);
+public uint8 SAL_Mutex_Free(SAL_Mutex mutex);
+public void SAL_Mutex_Acquire(SAL_Mutex mutex);
+public void SAL_Mutex_Release(SAL_Mutex mutex);
+
+public SAL_Semaphore SAL_Semaphore_Create(void);
+public void SAL_Semaphore_Free(SAL_Semaphore Semaphore);
+public void SAL_Semaphore_Decrement(SAL_Semaphore Semaphore);
+public void SAL_Semaphore_Increment(SAL_Semaphore Semaphore);
+
+#endif
