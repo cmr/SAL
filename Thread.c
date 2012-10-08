@@ -135,41 +135,37 @@ void SAL_Mutex_Release(SAL_Mutex mutex) {
 }
 
 /**
- * Create a new event.
+ * Create a new semaphore.
  *
- * @return a new event
+ * @return a new semaphore
  */
-SAL_Event SAL_Event_Create(void) {
+SAL_Semaphore SAL_Semaphore_Create(void) {
 	#ifdef WINDOWS
-		return CreateEvent(null, false, false, null);
+		return CreateSemaphore(null, 0, 4294967295, null);
 	#elif defined POSIX
     
 	#endif
 }
 
-void SAL_Event_Free(SAL_Event event) {
+void SAL_Semaphore_Free(SAL_Semaphore Semaphore) {
 	#ifdef WINDOWS
-		CloseHandle(event);
+		CloseHandle(Semaphore);
 	#elif defined POSIX
 
 	#endif
 }
 
-uint64 SAL_Event_Wait(SAL_Event event) {
+void SAL_Semaphore_Decrement(SAL_Semaphore Semaphore) {
 	#ifdef WINDOWS
-		DWORD result;
-		
-		result = WaitForSingleObject(event, INFINITE);
-
-		return result;
+		WaitForSingleObject(Semaphore, INFINITE);
 	#elif defined POSIX
 
 	#endif
 }
 
-void SAL_Event_Signal(SAL_Event event) {
+void SAL_Semaphore_Increment(SAL_Semaphore Semaphore) {
 	#ifdef WINDOWS
-		SetEvent(event);
+		ReleaseSemaphore(Semaphore, 1, null);
 	#elif defined POSIX
 
 	#endif
