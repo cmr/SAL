@@ -121,13 +121,11 @@ uint8* SAL_Cryptography_RandomBytes(uint64 count) {
 			seeded = true;
 		}
 
-    for (; count > 3; count -= 4) 
-      *(bytes + count) = (uint32)rand();
+        for (; count > 3; count -= 4) 
+          *(bytes + count) = (uint32)rand();
 
-    for (i = 0; i < rem; i++)
-      *((uint8*)bytes+i) = (uint8)rand();
-
-    return (uint8*)bytes;
+        for (i = 0; i < rem; i++)
+          *((uint8*)bytes+i) = (uint8)rand();
 	}
 
 	return (uint8*)bytes;
