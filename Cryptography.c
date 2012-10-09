@@ -109,26 +109,50 @@ uint8* SAL_Cryptography_SHA1(uint8* source, uint32 length) {
  * @return pointer to @a count bytes.
  */
 uint8* SAL_Cryptography_RandomBytes(uint64 count) {
-	uint32 *bytes = NULL;
-	uint8 rem = count % 4;
-	uint8 i;
+    uint32 *bytes = NULL;
+    uint8 rem = count % 4;
+    uint8 i;
 
-	if (count > 0) {
-		bytes = AllocateArray(uint32, (count / 4) + rem); // Integer division rounds towards 0, count % 4 is the remainder
+    if (count > 0) {
+        bytes = AllocateArray(uint32, (count / 4) + rem); // Integer division rounds towards 0, count % 4 is the remainder
 
-		if (!seeded) {
-			srand( (uint32)SAL_Time_Now() );
-			seeded = true;
-		}
+        if (!seeded) {
+            srand( (uint32)SAL_Time_Now() );
+            seeded = true;
+        }
 
         for (; count > 3; count -= 4) 
-          *(bytes + count) = (uint32)rand();
+            *(bytes + count) = (uint32)rand();
 
         for (i = 0; i < rem; i++)
-          *((uint8*)bytes+i) = (uint8)rand();
+            *((uint8*)bytes+i) = (uint8)rand();
+    }
+
+    return (uint8*)bytes;
+}
+
+/**
+ * Generate a 8 byte pseudorandom value.
+ *
+ * @param floor [in] Lower bound of random value
+ * @param ceiling [in] Upper bound of random value
+ * @return 8 pseudorandom bytes
+ */
+uint64 SAL_Cryptography_RandomUInt64(uint64 floor, uint64 ceiling) {
+    uint64 result;
+	
+	if (!seeded) {
+		srand( (uint32)SAL_Time_Now() );
+		seeded = true;
 	}
 
-	return (uint8*)bytes;
+    result = (uint32)rand();
+    result <<= 32;
+    result += (uint32)rand();
+    
+    result = result % (ceiling - floor) + floor;
+
+    return result;
 }
 
 /**
