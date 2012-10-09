@@ -1,6 +1,7 @@
 /** @file Cryptography.c
  * @brief Cryptographic functions (hashes, random numbers)
  */
+#include <math.h>
 
 #include <math.h>
 
@@ -120,13 +121,13 @@ uint8* SAL_Cryptography_RandomBytes(uint64 count) {
 			seeded = true;
 		}
 
-		for (; count > 3; count -= 4) 
-		  *(bytes + count) = (uint32)rand();
+    for (; count > 3; count -= 4) 
+      *(bytes + count) = (uint32)rand();
 
+    for (i = 0; i < rem; i++)
+      *((uint8*)bytes+i) = (uint8)rand();
 
-		for (i = 0; i < rem; i++)
-		  *((uint8*)bytes + i) = (uint8)rand();
-
+    return (uint8*)bytes;
 	}
 
 	return (uint8*)bytes;
@@ -148,7 +149,7 @@ uint32 SAL_Cryptography_RandomUInt32(uint32 floor, uint32 ceiling) {
 	}
 	result = rand() % (ceiling - floor) + floor;
 
-	return result;
+	return (uint32)result;
 }
 
 /**
@@ -167,7 +168,7 @@ uint16 SAL_Cryptography_RandomUInt16(uint16 floor, uint16 ceiling) {
 	}
 	result = rand() % (ceiling - floor) + floor;
 
-	return result;
+	return (uint16)result;
 }
 
 /**
@@ -186,41 +187,5 @@ uint8 SAL_Cryptography_RandomUInt8(uint8 floor, uint8 ceiling) {
 	}
 	result = rand() % (ceiling - floor) + floor;
 
-	return result;
-}
-
-int32 SAL_Cryptography_RandomInt32(int32 floor, int32 ceiling) {
-	int32 result;
-	
-	if (!seeded) {
-		srand( (int32)SAL_Time_Now() );
-		seeded = true;
-	}
-	result = rand() % (ceiling - floor) + floor;
-
-	return result;
-}
-
-int16 SAL_Cryptography_RandomInt16(int16 floor, int16 ceiling) {
-	int16 result;
-	
-	if (!seeded) {
-		srand( (int32)SAL_Time_Now() );
-		seeded = true;
-	}
-	result = rand() % (ceiling - floor) + floor;
-
-	return result;
-}
-
-int8 SAL_Cryptography_RandomInt8(int8 floor, int8 ceiling) {
-	int8 result;
-	
-	if (!seeded) {
-		srand( (int32)SAL_Time_Now() );
-		seeded = true;
-	}
-	result = rand() % (ceiling - floor) + floor;
-
-	return result;
+	return (uint8)result;
 }
