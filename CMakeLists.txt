@@ -9,8 +9,8 @@ include_directories(include)
 add_library(SoftwareAbstractionLayer SHARED ${sal_sources})
 
 if(MSVC)
-  set(CMAKE_C_FLAGS_RELEASE "/arch:AVX /Gr /O2 /MP /Za")
-  set(CMAKE_C_FLAGS_DEBUG "/arch:AVX /Od /Za /MP /Zi")
+  set(CMAKE_C_FLAGS_RELEASE "/arch:AVX /Gr /O2 /MP")
+  set(CMAKE_C_FLAGS_DEBUG "/arch:AVX /Od /MP /Zi")
 endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD true)
