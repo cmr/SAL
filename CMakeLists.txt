@@ -6,12 +6,7 @@ file(GLOB_RECURSE sal_headers include/*.h)
 
 include_directories(include)
 
-add_library(SAL SHARED ${sal_sources})
-
-if(MSVC)
-  set(CMAKE_C_FLAGS_RELEASE "/arch:AVX /Gr /O2 /MP")
-  set(CMAKE_C_FLAGS_DEBUG "/arch:AVX /Od /MP /Zi")
-endif()
+add_library(SAL SHARED ${sal_sources} ${sal_headers})
 
 set(CMAKE_THREAD_PREFER_PTHREAD true)
 find_package(Threads REQUIRED)
