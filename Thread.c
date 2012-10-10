@@ -45,6 +45,30 @@ uint64 SAL_Thread_Join(SAL_Thread thread) {
 }
 
 /**
+ * Yields execution of @a.
+ */
+void SAL_Thread_Yield(SAL_Thread thread) {
+	#ifdef WINDOWS
+		Sleep(0);
+	#elif defined POSIX
+		yield();
+	#endif
+}
+
+/**
+ * @a will sleep for the supplied duration.
+ *
+ * @param duration Length of time to sleep
+ */
+void SAL_Thread_Sleep(SAL_Thread thread, uint32 duration) {
+	#ifdef WINDOWS
+		Sleep(duration);
+	#elif defined POSIX
+		sleep(duration);
+	#endif
+}
+
+/**
  * Exit the current running thread.
  *
  * @param exitCode Return code of the thread

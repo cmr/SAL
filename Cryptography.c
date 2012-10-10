@@ -10,7 +10,6 @@
 
 #ifdef WINDOWS
 	#include <Windows.h>
-	#pragma comment(lib, "crypt32.lib")
 #elif defined POSIX
 	#include <openssl/evp.h>
 #endif
@@ -35,25 +34,20 @@ uint8* SAL_Cryptography_SHA512(uint8* source, uint32 length) {
 		CryptCreateHash(provider, CALG_SHA_512, 0, 0, &hasher);
 		CryptHashData(hasher, source, length, 0);
 
-
 		hash = AllocateArray(uint8, 64);
 		CryptGetHashParam(hasher, HP_HASHVAL, hash, &hashLength, 0);
 
-
 		CryptDestroyHash(hasher);
 		CryptReleaseContext(provider, 0);
-
 
 		return hash;
 	#elif defined POSIX
 		EVP_MD_CTX *ctx = EVP_MD_CTX_create();
 		uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha512()));
 
-
 		EVP_DigestInit_ex(ctx, EVP_sha512(), NULL);
 		EVP_DigestUpdate(ctx, (void*)source, length);
 		EVP_DigestFinal_ex(ctx, (unsigned char*)hash, NULL);
-
 
 		return hash;
 	#endif
@@ -77,25 +71,20 @@ uint8* SAL_Cryptography_SHA1(uint8* source, uint32 length) {
 		CryptCreateHash(provider, CALG_SHA1, 0, 0, &hasher);
 		CryptHashData(hasher, source, length, 0);
 
-
 		hash = AllocateArray(uint8, 20);
 		CryptGetHashParam(hasher, HP_HASHVAL, hash, &hashLength, 0);
 
-
 		CryptDestroyHash(hasher);
 		CryptReleaseContext(provider, 0);
-
 
 		return hash;
 	#elif defined POSIX
 		EVP_MD_CTX *ctx = EVP_MD_CTX_create();
 		uint8 *hash = AllocateArray(uint8, EVP_MD_size(EVP_sha1()));
 
-
 		EVP_DigestInit_ex(ctx, EVP_sha1(), NULL);
 		EVP_DigestUpdate(ctx, (void*)source, length);
 		EVP_DigestFinal_ex(ctx, (unsigned char*)hash, NULL);
-
 
 		return hash;
 	#endif
@@ -122,10 +111,10 @@ uint8* SAL_Cryptography_RandomBytes(uint64 count) {
         }
 
         for (; count > 3; count -= 4) 
-            *(bytes + count) = (uint32)rand();
+            *(uint64*)(bytes + count) = (uint64)rand();
 
         for (i = 0; i < rem; i++)
-            *((uint8*)bytes+i) = (uint8)rand();
+            *(uint8*)(bytes + i) = (uint8)rand();
     }
 
     return (uint8*)bytes;
