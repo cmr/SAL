@@ -3,8 +3,6 @@
  */
 #include <math.h>
 
-#include <math.h>
-
 #include "Cryptography.h"
 #include "Time.h"
 
@@ -111,7 +109,7 @@ uint8* SAL_Cryptography_RandomBytes(uint64 count) {
         }
 
         for (; count > 3; count -= 4) 
-            *(uint64*)(bytes + count) = (uint64)rand();
+            *(bytes + count / 4) = rand();
 
         for (i = 0; i < rem; i++)
             *(uint8*)(bytes + i) = (uint8)rand();
