@@ -1,5 +1,5 @@
-#ifndef SAL_INCLUDE_COMMON
-#define SAL_INCLUDE_COMMON
+#ifndef INCLUDE_SAL_COMMON
+#define INCLUDE_SAL_COMMON
 
 #ifdef _WIN64
   #define WINDOWS

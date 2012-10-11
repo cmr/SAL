@@ -1,5 +1,5 @@
-#ifndef SAL_INCLUDE_THREAD
-#define SAL_INCLUDE_THREAD
+#ifndef INCLUDE_SAL_THREAD
+#define INCLUDE_SAL_THREAD
 
 #include "Common.h"
 

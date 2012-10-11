@@ -1,5 +1,5 @@
-#ifndef SAL_INCLUDE_TIME
-#define SAL_INCLUDE_TIME
+#ifndef INCLUDE_SAL_TIME
+#define INCLUDE_SAL_TIME
 
 #include "Common.h"
 
