@@ -5,6 +5,7 @@
 #include "Thread.h"
 
 #ifdef WINDOWS
+    #define WIN32_LEAN_AND_MEAN
 	#include <Windows.h>
 #endif
 
@@ -14,13 +15,13 @@
  * @param startAddress The function the thread will execute
  * @param startParameter The parameter the function will be called with
  */
-SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* startParameter) {
+SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* startArgument) {
 	#ifdef WINDOWS
-		return CreateThread(NULL, 0, startAddress, startParameter, 0, NULL);
+		return CreateThread(NULL, 0, startAddress, startArgument, 0, NULL);
 	#elif defined POSIX
 		pthread_t threadId;
 
-		pthread_create(&threadId, NULL, startAddress, startParameter);
+		pthread_create(&threadId, NULL, startAddress, startArgument);
 
 		return threadId;
 	#endif

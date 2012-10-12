@@ -4,7 +4,8 @@
 #include "Common.h"
 
 #ifdef WINDOWS
-	typedef unsigned long (__stdcall *SAL_Thread_StartAddress)(void* SAL_Thread_StartParameter);
+	#define SAL_Thread_Start(Name) unsigned long __stdcall Name(void* startupArgument)
+	typedef unsigned long (__stdcall *SAL_Thread_StartAddress)(void* SAL_Thread_StartArgument);
 	typedef void* SAL_Thread;
 	typedef void* SAL_Mutex;
 	typedef void* SAL_Semaphore;
@@ -12,7 +13,8 @@
 	#include <pthread.h>
 	#include <errno.h>
     
-	typedef void* (*SAL_Thread_StartAddress)(void* SAL_Thread_StartParameter);
+	#define SAL_Thread_Start(Name) void* ##Name(void* startupArgument) {
+	typedef void* (*SAL_Thread_StartAddress)(void* SAL_Thread_StartArgument);
 	typedef pthread_t SAL_Thread;
 	
 	typedef pthread_mutex_t* SAL_Mutex;
