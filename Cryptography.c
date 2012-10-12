@@ -1,7 +1,6 @@
 /** @file Cryptography.c
  * @brief Cryptographic functions (hashes, random numbers)
  */
-#include <math.h>
 
 #include "Cryptography.h"
 #include "Time.h"
@@ -13,6 +12,9 @@
 #elif defined POSIX
 	#include <openssl/evp.h>
 #endif
+
+#include <math.h>
+#include <stdlib.h>
 
 static boolean seeded = false;
 

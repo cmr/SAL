@@ -5,19 +5,19 @@
 #include <Utilities/Strings.h>
 
 #ifdef WINDOWS
-	typedef void* SAL_Socket;
+	typedef uint64 SAL_Socket;
 #elif defined POSIX
     typedef void* SAL_Socket;
 #endif
 
-typedef void (*SAL_Socket_ReadCallback)(uint64 bytesRead);
+typedef void (*SAL_Socket_ReadCallback)(uint32 bytesRead);
 
-public SAL_Socket SAL_Socket_Connect(uint8* address);
-public SAL_Socket SAL_Socket_Listen(uint8* address);
-public SAL_Socket SAL_Socket_Accept(SAL_Socket socket, String* acceptedAddress);
+public SAL_Socket SAL_Socket_Connect(const int8* address, uint16 port);
+public SAL_Socket SAL_Socket_Listen(const int8* port);
+public SAL_Socket SAL_Socket_Accept(SAL_Socket listener, uint32* acceptedAddress);
 public void SAL_Socket_Close(SAL_Socket socket);
-public uint64 SAL_Socket_Read(SAL_Socket socket, uint8* buffer, uint64 bufferSize);
-public uint64 SAL_Socket_ReadAsync(SAL_Socket socket, uint8* buffer, uint64 bufferSize, SAL_Socket_ReadCallback callback);
-public void SAL_Socket_Write(SAL_Socket socket, uint8* toWrite, uint64 writeAmount);
+public uint32 SAL_Socket_Read(SAL_Socket socket, uint8* buffer, uint32 bufferSize);
+public void SAL_Socket_ReadAsync(SAL_Socket socket, uint8* buffer, uint32 bufferSize, SAL_Socket_ReadCallback callback);
+public void SAL_Socket_Write(SAL_Socket socket, const uint8* toWrite, uint32 writeAmount);
 
 #endif
