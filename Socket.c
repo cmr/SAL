@@ -1,3 +1,7 @@
+/**
+ * @file Socket.c
+ * @brief TCP networking functions
+ */
 #include "Socket.h"
 
 #include <Utilities/LinkedList.h>
