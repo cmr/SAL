@@ -62,7 +62,12 @@ static void AsyncWorker_Initialize() {
 
 
 
-
+/**
+ * Create a TCP connection to a host.
+ *
+ * @param address A string specifying the IP address to connect to
+ * @param port Port to connect to
+ */
 SAL_Socket SAL_Socket_Connect(const int8* address, uint16 port) {
     #ifdef WINDOWS
         SOCKET server;
@@ -91,6 +96,12 @@ SAL_Socket SAL_Socket_Connect(const int8* address, uint16 port) {
     #endif
 }
 
+/**
+ * Create a listening socket on all interfaces.
+ *
+ * @param port String with the port number or name (e.g, "http" or "80")
+ * @returns a socket you can call @ref SAL_Socket_Accept on
+ */
 SAL_Socket SAL_Socket_Listen(const int8* port) {
     #ifdef WINDOWS
 	    ADDRINFO* addressInfo;
@@ -121,6 +132,15 @@ SAL_Socket SAL_Socket_Listen(const int8* port) {
     #endif
 }
 
+/**
+ * Accept an incoming connection on a listening socket (one created by @ref
+ * SAL_Socket_Listen).
+ *
+ * @param listener The listening socket to accept a connection on
+ * @param acceptedAddress 4 network bytes representing the client's IP address
+ *
+ * @warning This function is currently broken and platform-dependent
+ */
 SAL_Socket SAL_Socket_Accept(SAL_Socket listener, uint32* acceptedAddress) {
     #ifdef WINDOWS
 	    SOCKET acceptedSocket;
@@ -139,6 +159,11 @@ SAL_Socket SAL_Socket_Accept(SAL_Socket listener, uint32* acceptedAddress) {
     #endif
 }
 
+/**
+ * Disconnect and close the socket.
+ *
+ * @param socket Socket to close
+ */
 void SAL_Socket_Close(SAL_Socket socket) {
     #ifdef WINDOWS
         shutdown(socket, SD_BOTH);
@@ -148,6 +173,14 @@ void SAL_Socket_Close(SAL_Socket socket) {
     #endif
 }
 
+/**
+ * Read up to @a bufferSize bytes into @a buffer from @a socket.
+ *
+ * @param socket Socket to read from
+ * @param buffer Address to write the read data too
+ * @param bufferSize Size of @a buffer
+ * @returns Number of bytes read
+ */
 uint32 SAL_Socket_Read(SAL_Socket socket, uint8* buffer, uint32 bufferSize) {
     #ifdef WINDOWS
         assert(buffer);
@@ -177,6 +210,16 @@ void SAL_Socket_ReadAsync(SAL_Socket socket, uint8* buffer, uint32 bufferSize, S
     SAL_Mutex_Free(CallbacksMutex);
 }
 
+/**
+ * Send @a writeAmount bytes from @a toWrite over @a socket.
+ *
+ * @param socket Socket to write to
+ * @param toWrite Buffer to write from
+ * @param writeAmount Number of bytes to write
+ *
+ * @warning This function is currently semi-broken; it doesn't guarantee that
+ * all of the data will be written, and does not indicate failure.
+ */
 void SAL_Socket_Write(SAL_Socket socket, const uint8* toWrite, uint32 writeAmount) {
     #ifdef WINDOWS
         assert(toWrite);
