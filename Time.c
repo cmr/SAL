@@ -12,10 +12,10 @@
 #endif
 
 /**
- * Return the current time in ms since Jan 1, 1970.
+ * @returns the current time in ms since Jan 1, 1970.
  *
- * Does *NOT* take into account leap seconds, but does take into account leap
- * days.
+ * @warning Does *NOT* take into account leap seconds, but does take into
+ * account leap days.
  */
 int64 SAL_Time_Now(void) {
 	#ifdef WINDOWS

@@ -14,6 +14,8 @@
  *
  * @param startAddress The function the thread will execute
  * @param startParameter The parameter the function will be called with
+ *
+ * @returns An opaque thread id object.
  */
 SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* startArgument) {
 	#ifdef WINDOWS
@@ -46,22 +48,22 @@ uint64 SAL_Thread_Join(SAL_Thread thread) {
 }
 
 /**
- * Yields execution of @a.
+ * Yields execution of @a thread, allowing another thread to execute.
  */
 void SAL_Thread_Yield(SAL_Thread thread) {
 	#ifdef WINDOWS
 		Sleep(0);
 	#elif defined POSIX
-		yield();
+		pthread_yield();
 	#endif
 }
 
 /**
- * @a will sleep for the supplied duration.
+ * Suspend execution of current thread.
  *
- * @param duration Length of time to sleep
+ * @param duration Length of time to sleep, in milliseconds
  */
-void SAL_Thread_Sleep(SAL_Thread thread, uint32 duration) {
+void SAL_Thread_Sleep(uint32 duration) {
 	#ifdef WINDOWS
 		Sleep(duration);
 	#elif defined POSIX
