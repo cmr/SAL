@@ -18,7 +18,7 @@ public SAL_Socket SAL_Socket_Listen(const int8* port);
 public SAL_Socket SAL_Socket_Accept(SAL_Socket listener, uint32* acceptedAddress);
 public void SAL_Socket_Close(SAL_Socket socket);
 public uint32 SAL_Socket_Read(SAL_Socket socket, uint8* buffer, uint32 bufferSize);
-public void SAL_Socket_Write(SAL_Socket socket, const uint8* toWrite, uint32 writeAmount);
-public void SAL_Socket_RegisterReadCallback(SAL_Socket socket, uint8* buffer, uint32 bufferSize, SAL_Socket_ReadCallback callback);
+public boolean SAL_Socket_Write(SAL_Socket socket, const uint8* toWrite, uint32 writeAmount);
+public void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback callback);
 
 #endif
