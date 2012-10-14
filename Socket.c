@@ -91,10 +91,46 @@ static void Worker_Initialize() {
 /**
  * Create a TCP connection to a host.
  *
- * @param address A string specifying the IP address to connect to
+ * @param address A string specifying the hostname to connect to
  * @param port Port to connect to
  */
 SAL_Socket SAL_Socket_Connect(const int8* address, uint16 port) {
+    #ifdef WINDOWS
+        unsigned long hostAddress;
+        HOSTENT* hostEntry;
+        uint8 i;
+        SAL_Socket socket;
+
+        if (!winsockInitialized) {
+	        WSADATA startupData;
+	        WSAStartup(514, &startupData);
+            winsockInitialized = true;
+        }
+
+        hostAddress = inet_addr(address);
+        if (hostAddress == INADDR_NONE) {
+            hostEntry = gethostbyname(address);
+            for (i = 0, socket = NULL; i < hostEntry->h_length; i++)
+                if (socket = SAL_Socket_ConnectIP((uint32)hostEntry->h_addr_list[i], port))
+                    return socket;
+
+            return NULL;
+        }
+        else {
+            return SAL_Socket_ConnectIP(hostAddress, port);
+        }
+    #elif defined POSIX
+
+    #endif
+}
+
+/**
+ * Create a TCP connection to a host.
+ *
+ * @param ip IP Address of the remote host
+ * @param port Port to connect to
+ */
+SAL_Socket SAL_Socket_ConnectIP(uint32 ip, uint16 port) {
     #ifdef WINDOWS
         SOCKET server;
         SOCKADDR_IN serverAddress;
@@ -110,7 +146,7 @@ SAL_Socket SAL_Socket_Connect(const int8* address, uint16 port) {
             return NULL;
 
         serverAddress.sin_family = AF_INET;
-        serverAddress.sin_addr.S_un.S_addr = inet_addr(address);
+        serverAddress.sin_addr.S_un.S_addr = (unsigned long)ip;
         serverAddress.sin_port = htons(port);
 
         if (connect(server, (SOCKADDR*)&serverAddress, sizeof(serverAddress)) == SOCKET_ERROR)
@@ -225,9 +261,15 @@ void SAL_Socket_Close(SAL_Socket socket) {
  */
 uint32 SAL_Socket_Read(SAL_Socket socket, uint8* buffer, uint32 bufferSize) {
     #ifdef WINDOWS
-        assert(buffer);
+        int32 received;
 
-        return (uint32)recv(socket, (int8*)buffer, bufferSize, 0);
+        assert(buffer);
+        
+        received = recv(socket, (int8*)buffer, bufferSize, 0);
+        if (received <= 0)
+            return 0;
+
+        return (uint32)received;
     #elif defined POSIX
 
     #endif

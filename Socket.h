@@ -14,6 +14,7 @@ typedef void (*SAL_Socket_ReadCallback)(uint8* buffer, uint32 length);
 #define SAL_Socket_ReadCallback(Name) void Name(uint8* buffer, uint32 length)
 
 public SAL_Socket SAL_Socket_Connect(const int8* address, uint16 port);
+public SAL_Socket SAL_Socket_ConnectIP(uint32 ip, uint16 port);
 public SAL_Socket SAL_Socket_Listen(const int8* port);
 public SAL_Socket SAL_Socket_Accept(SAL_Socket listener, uint32* acceptedAddress);
 public void SAL_Socket_Close(SAL_Socket socket);
