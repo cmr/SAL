@@ -23,8 +23,8 @@
 
 public SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* startParameter);
 public uint64 SAL_Thread_Join(SAL_Thread thread);
-public void SAL_Thread_Yield(SAL_Thread thread);
-public void SAL_Thread_Sleep(SAL_Thread thread, uint32 duration);
+public void SAL_Thread_Yield();
+public void SAL_Thread_Sleep(uint32 duration);
 public void SAL_Thread_Exit(uint32 exitCode);
 
 public SAL_Mutex SAL_Mutex_Create(void);
