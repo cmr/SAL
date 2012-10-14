@@ -13,7 +13,7 @@
 	#include <pthread.h>
   #include <semaphore.h>
     
-	#define SAL_Thread_Start(Name) void* ##Name(void* startupArgument) {
+	#define SAL_Thread_Start(Name) void* Name(void* startupArgument)
 	typedef void* (*SAL_Thread_StartAddress)(void* SAL_Thread_StartArgument);
 	typedef pthread_t SAL_Thread;
 	
