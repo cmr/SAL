@@ -50,7 +50,7 @@ uint64 SAL_Thread_Join(SAL_Thread thread) {
 /**
  * Yields execution of @a thread, allowing another thread to execute.
  */
-void SAL_Thread_Yield() {
+void SAL_Thread_Yield(void) {
 	#ifdef WINDOWS
 		Sleep(0);
 	#elif defined POSIX
