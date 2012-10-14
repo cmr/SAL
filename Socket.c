@@ -20,61 +20,55 @@
     static boolean winsockInitialized = false;
 #endif
 
-static struct _CallbackState {
+static struct CallbackRegistration {
     SAL_Socket Socket;
-    SAL_Socket_ReadCallback Callback;
+    LinkedList Callbacks;
     uint8 Buffer[CALLBACK_BUFFER_SIZE];
 };
-typedef struct _CallbackState CallbackState;
+typedef struct CallbackRegistration CallbackRegistration;
 
 static LinkedList callbackList;
 static SAL_Mutex callbackListMutex;
 static SAL_Thread worker;
-static boolean workerInitialized = false;
 static boolean workerRunning = false;
 
 static SAL_Thread_Start(Worker_Run) {
     fd_set readSet;
     uint32 i;
     uint32 bytesRead;
-    CallbackState* currentState;
+    CallbackRegistration* currentRegistration;
+    SAL_Socket_ReadCallback callback;
     LinkedList_Iterator* selectIterator;
-    LinkedList_Iterator* readyIterator;
     
     selectIterator = LinkedList_BeginIterate(&callbackList);
-    readyIterator = LinkedList_BeginIterate(&callbackList);
 
     while (workerRunning) {
         FD_ZERO(&readSet);
 
         SAL_Mutex_Acquire(callbackListMutex);
 
-        for (i = 0; i < FD_SETSIZE; i++)
-            if ( LinkedList_IterateNext(currentState, selectIterator, CallbackState) ) {
-                FD_SET(currentState->Socket, &readSet);
-            }
-            else {
-                LinkedList_ResetIterator(selectIterator);            
-                break;
-            }
+        for (i = 0; i < FD_SETSIZE && LinkedList_IterateNext(currentRegistration, selectIterator, CallbackRegistration); i++)
+            FD_SET(currentRegistration->Socket, &readSet);
+        LinkedList_ResetIterator(selectIterator);            
 
         select(0, &readSet, NULL, NULL, NULL);
 
         for (i = 0; i < readSet.fd_count; i++) {
-            LinkedList_ForEach(currentState, readyIterator, CallbackState)
-                if (currentState->Socket == readSet.fd_array[i]) {
-                    bytesRead = SAL_Socket_Read(currentState->Socket, currentState->Buffer, CALLBACK_BUFFER_SIZE);
-                    currentState->Callback(currentState->Buffer, bytesRead);
+            LinkedList_ForEach(currentRegistration, &callbackList, CallbackRegistration) {
+                if (currentRegistration->Socket == readSet.fd_array[i]) {
+                    bytesRead = SAL_Socket_Read(currentRegistration->Socket, currentRegistration->Buffer, CALLBACK_BUFFER_SIZE);
+                    
+                    LinkedList_ForEachPtr(callback, &currentRegistration->Callbacks, SAL_Socket_ReadCallback)
+                        callback(currentRegistration->Buffer, bytesRead);
                 }
+            }
         }
 
         SAL_Mutex_Release(callbackListMutex);
-
         SAL_Thread_Sleep(25);
     }
     
     LinkedList_EndIterate(selectIterator);
-    LinkedList_EndIterate(readyIterator);
 
     return 0;
 }
@@ -86,6 +80,12 @@ static void Worker_Initialize() {
     worker = SAL_Thread_Create(Worker_Run, NULL);
 }
 
+static void Worker_Shutdown() {
+    workerRunning = false;
+    SAL_Thread_Join(worker);
+    SAL_Mutex_Free(callbackListMutex);
+    LinkedList_Uninitialize(&callbackList);
+}
 
 
 /**
@@ -243,12 +243,28 @@ SAL_Socket SAL_Socket_Accept(SAL_Socket listener, uint32* acceptedAddress) {
  * @param socket Socket to close
  */
 void SAL_Socket_Close(SAL_Socket socket) {
+    CallbackRegistration* current;
+
     #ifdef WINDOWS
         shutdown(socket, SD_BOTH);
 	    closesocket(socket);
     #elif defined POSIX
 
     #endif
+
+    SAL_Mutex_Acquire(callbackListMutex);
+    LinkedList_ForEach(current, &callbackList, CallbackRegistration)
+        if (current->Socket == socket) {
+            LinkedList_Remove(&callbackList, current);
+            break;
+        }
+
+    if (callbackList.Count == 0) {
+        SAL_Mutex_Release(callbackListMutex);
+        Worker_Shutdown();
+    }
+    else
+        SAL_Mutex_Release(callbackListMutex);
 }
 
 /**
@@ -313,21 +329,31 @@ boolean SAL_Socket_Write(SAL_Socket socket, const uint8* toWrite, uint32 writeAm
  * @warning The buffer passed to @a callback is the internal buffer. Do not reference it outside out the callback. 
  */
 void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback callback) {
-    CallbackState* callbackData;
+    CallbackRegistration* currentRegistration;
     
     assert(socket);
     assert(callback);
 
-    if (!workerInitialized) {
+    if (!workerRunning) {
         Worker_Initialize();
-        workerInitialized = true;
+        workerRunning = true;
+    }
+    
+    SAL_Mutex_Acquire(callbackListMutex);
+
+    LinkedList_ForEach(currentRegistration, &callbackList, CallbackRegistration) {
+        if (currentRegistration->Socket == socket) {
+            LinkedList_Append(&currentRegistration->Callbacks, callback);
+            goto exit;
+        }
     }
 
-    callbackData = Allocate(CallbackState);
-    callbackData->Socket = socket;
-    callbackData->Callback = callback;
+    currentRegistration = Allocate(CallbackRegistration);
+    currentRegistration->Socket = socket;
+    LinkedList_Initialize(&currentRegistration->Callbacks, NULL);
+    LinkedList_Append(&currentRegistration->Callbacks, callback);
+    LinkedList_Append(&callbackList, currentRegistration);
 
-    SAL_Mutex_Acquire(callbackListMutex);
-    LinkedList_Append(&callbackList, callbackData);
+    exit:
     SAL_Mutex_Release(callbackListMutex);
 }
