@@ -1,4 +1,5 @@
-/** @file Thread.c
+/** 
+ * @file Thread.c
  * @brief Threading functions and synchronization primitives.
  */
 
@@ -7,6 +8,8 @@
 #ifdef WINDOWS
     #define WIN32_LEAN_AND_MEAN
 	#include <Windows.h>
+#elif defined POSIX
+	#include <errno.h>
 #endif
 
 /**
@@ -164,53 +167,59 @@ void SAL_Mutex_Release(SAL_Mutex mutex) {
 /**
  * Create a new semaphore.
  *
- * @return a new semaphore
+ * @returns a new semaphore, NULL on failure
  */
 SAL_Semaphore SAL_Semaphore_Create(void) {
 	#ifdef WINDOWS
 		return CreateSemaphore(NULL, 0, 4294967295, NULL);
 	#elif defined POSIX
-    
+		sem_t *sem = Allocate(sem_t);
+		if (sem_init(sem, 0 /* shared between threads */, 0) != 0) {
+			return NULL;
+		}
+		return sem;
 	#endif
 }
 
 /**
  * Free a semaphore.
  * 
- * @param semaphore to free.
+ * @param semaphore to free
+ * @warning Don't free a semaphor that is still in use (being waited on)
  */
-void SAL_Semaphore_Free(SAL_Semaphore Semaphore) {
+void SAL_Semaphore_Free(SAL_Semaphore semaphore) {
 	#ifdef WINDOWS
-		CloseHandle(Semaphore);
+		CloseHandle(semaphore);
 	#elif defined POSIX
-
+		sem_destroy(semaphore);
+		Free(semaphore);
 	#endif
 }
 
 /**
  * Decrement a semaphore.
  * 
- * @param semaphore to decrement.
+ * @param semaphore to decrement
  *
  * @warning This function will block if the semaphore count is zero.
  */
-void SAL_Semaphore_Decrement(SAL_Semaphore Semaphore) {
+void SAL_Semaphore_Decrement(SAL_Semaphore semaphore) {
 	#ifdef WINDOWS
-		WaitForSingleObject(Semaphore, INFINITE);
+		WaitForSingleObject(semaphore, INFINITE);
 	#elif defined POSIX
-
+		while (sem_wait(semaphore) == -1 && errno == EINTR);
 	#endif
 }
 
 /**
  * Increment a semaphore.
  * 
- * @param semaphore to increment.
+ * @param semaphore to increment
  */
-void SAL_Semaphore_Increment(SAL_Semaphore Semaphore) {
+void SAL_Semaphore_Increment(SAL_Semaphore semaphore) {
 	#ifdef WINDOWS
-		ReleaseSemaphore(Semaphore, 1, NULL);
+		ReleaseSemaphore(semaphore, 1, NULL);
 	#elif defined POSIX
-
+		sem_post(semaphore);
 	#endif
 }
