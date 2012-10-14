@@ -10,6 +10,7 @@
 	typedef void* SAL_Semaphore;
 #elif defined POSIX
 	#include <pthread.h>
+  #include <semaphore.h>
     
 	typedef void* (*SAL_Thread_StartAddress)(void* SAL_Thread_StartParameter);
 	typedef pthread_t SAL_Thread;
