@@ -8,6 +8,8 @@
 #include <Utilities/Memory.h>
 #include "Thread.h"
 
+#define CALLBACK_BUFFER_SIZE 1024
+
 #ifdef WINDOWS
     #define WIN32_LEAN_AND_MEAN
     #define FD_SETSIZE 1024
@@ -21,8 +23,7 @@
 static struct _CallbackState {
     SAL_Socket Socket;
     SAL_Socket_ReadCallback Callback;
-    uint32 BufferSize;
-    uint8* Buffer;
+    uint8 Buffer[CALLBACK_BUFFER_SIZE];
 };
 typedef struct _CallbackState CallbackState;
 
@@ -62,8 +63,8 @@ static SAL_Thread_Start(Worker_Run) {
         for (i = 0; i < readSet.fd_count; i++) {
             LinkedList_ForEach(currentState, readyIterator, CallbackState)
                 if (currentState->Socket == readSet.fd_array[i]) {
-                    bytesRead = SAL_Socket_Read(currentState->Socket, currentState->Buffer, currentState->BufferSize);
-                    currentState->Callback(bytesRead);
+                    bytesRead = SAL_Socket_Read(currentState->Socket, currentState->Buffer, CALLBACK_BUFFER_SIZE);
+                    currentState->Callback(currentState->Buffer, bytesRead);
                 }
         }
 
@@ -71,6 +72,9 @@ static SAL_Thread_Start(Worker_Run) {
 
         SAL_Thread_Sleep(25);
     }
+    
+    LinkedList_EndIterate(selectIterator);
+    LinkedList_EndIterate(readyIterator);
 
     return 0;
 }
@@ -229,8 +233,48 @@ uint32 SAL_Socket_Read(SAL_Socket socket, uint8* buffer, uint32 bufferSize) {
     #endif
 }
 
-void SAL_Socket_ReadAsync(SAL_Socket socket, uint8* buffer, uint32 bufferSize, SAL_Socket_ReadCallback callback) {
+/**
+ * Send @a writeAmount bytes from @a toWrite over @a socket.
+ *
+ * @param socket Socket to write to
+ * @param toWrite Buffer to write from
+ * @param writeAmount Number of bytes to write
+ * @returns true if the call was successful, false if it failed.
+ */
+boolean SAL_Socket_Write(SAL_Socket socket, const uint8* toWrite, uint32 writeAmount) {
+    #ifdef WINDOWS
+        unsigned long mode;
+        int32 result;
+
+        assert(toWrite);
+        
+        mode = 1;
+        ioctlsocket(socket, FIONBIO, &mode);
+
+        result = send(socket, (const int8*)toWrite, writeAmount, 0);
+        
+        mode = 0;
+        ioctlsocket(socket, FIONBIO, &mode);
+
+        return result != SOCKET_ERROR;
+    #elif defined POSIX
+
+    #endif
+}
+
+/**
+ * Register @a callback to be called whenever data is available on @a socket.
+ *
+ * @param socket Socket to read from
+ * @param callback The callback to call
+ *
+ * @warning The buffer passed to @a callback is the internal buffer. Do not reference it outside out the callback. 
+ */
+void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback callback) {
     CallbackState* callbackData;
+    
+    assert(socket);
+    assert(callback);
 
     if (!workerInitialized) {
         Worker_Initialize();
@@ -239,31 +283,9 @@ void SAL_Socket_ReadAsync(SAL_Socket socket, uint8* buffer, uint32 bufferSize, S
 
     callbackData = Allocate(CallbackState);
     callbackData->Socket = socket;
-    callbackData->Buffer = buffer;
-    callbackData->BufferSize = bufferSize;
     callbackData->Callback = callback;
 
     SAL_Mutex_Acquire(callbackListMutex);
     LinkedList_Append(&callbackList, callbackData);
     SAL_Mutex_Release(callbackListMutex);
-}
-
-/**
- * Send @a writeAmount bytes from @a toWrite over @a socket.
- *
- * @param socket Socket to write to
- * @param toWrite Buffer to write from
- * @param writeAmount Number of bytes to write
- *
- * @warning This function is currently semi-broken; it doesn't guarantee that
- * all of the data will be written, and does not indicate failure.
- */
-void SAL_Socket_Write(SAL_Socket socket, const uint8* toWrite, uint32 writeAmount) {
-    #ifdef WINDOWS
-        assert(toWrite);
-
-        send(socket, (const int8*)toWrite, writeAmount, 0);
-    #elif defined POSIX
-
-    #endif
 }
