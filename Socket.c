@@ -15,53 +15,71 @@
     #include <winsock2.h>
     #include <ws2tcpip.h>
 
-    static boolean initialized = false;
+    static boolean winsockInitialized = false;
 #endif
 
-typedef struct {
+static struct _CallbackState {
     SAL_Socket Socket;
     SAL_Socket_ReadCallback Callback;
     uint32 BufferSize;
     uint8* Buffer;
-} AsyncWorker_Callback;
+};
+typedef struct _CallbackState CallbackState;
 
-static LinkedList Callbacks;
-static SAL_Mutex CallbacksMutex;
-static SAL_Thread AsyncWorker;
-static boolean AsyncWorkerInitialized = false;
+static LinkedList callbackList;
+static SAL_Mutex callbackListMutex;
+static SAL_Thread worker;
+static boolean workerInitialized = false;
+static boolean workerRunning = false;
 
-static SAL_Thread_Start(AsyncWorker_Run) {
+static SAL_Thread_Start(Worker_Run) {
     fd_set readSet;
     uint32 i;
     uint32 bytesRead;
-    AsyncWorker_Callback* callback;
+    CallbackState* currentState;
+    LinkedList_Iterator* selectIterator;
+    LinkedList_Iterator* readyIterator;
+    
+    selectIterator = LinkedList_BeginIterate(&callbackList);
+    readyIterator = LinkedList_BeginIterate(&callbackList);
 
-    /*perhaps write a wrapper over FD_SET to allow for selecting over all sockets?*/
-    while (true) {
+    while (workerRunning) {
         FD_ZERO(&readSet);
 
-        LinkedList_ForEach(callback, Callbacks, AsyncWorker_Callback)
-            FD_SET(callback->Socket, &readSet);
+        SAL_Mutex_Acquire(callbackListMutex);
+
+        for (i = 0; i < FD_SETSIZE; i++)
+            if ( LinkedList_IterateNext(currentState, selectIterator, CallbackState) ) {
+                FD_SET(currentState->Socket, &readSet);
+            }
+            else {
+                LinkedList_ResetIterator(selectIterator);            
+                break;
+            }
 
         select(0, &readSet, NULL, NULL, NULL);
 
         for (i = 0; i < readSet.fd_count; i++) {
-            LinkedList_ForEach(callback, Callbacks, AsyncWorker_Callback)
-                if (callback->Socket == readSet.fd_array[i]) {
-                    bytesRead = SAL_Socket_Read(callback->Socket, callback->Buffer, callback->BufferSize);
-                    callback->Callback(bytesRead);
+            LinkedList_ForEach(currentState, readyIterator, CallbackState)
+                if (currentState->Socket == readSet.fd_array[i]) {
+                    bytesRead = SAL_Socket_Read(currentState->Socket, currentState->Buffer, currentState->BufferSize);
+                    currentState->Callback(bytesRead);
                 }
         }
 
-        SAL_Thread_Sleep(AsyncWorker, 25);
+        SAL_Mutex_Release(callbackListMutex);
+
+        SAL_Thread_Sleep(25);
     }
+
+    return 0;
 }
 
-static void AsyncWorker_Initialize() {
-    LinkedList_Initialize(&Callbacks, Memory_Free);
-    
-    CallbacksMutex = SAL_Mutex_Create();
-    AsyncWorker = SAL_Thread_Create(AsyncWorker_Run, NULL);
+static void Worker_Initialize() {
+    LinkedList_Initialize(&callbackList, NULL);
+    callbackListMutex = SAL_Mutex_Create();
+    workerRunning = true;
+    worker = SAL_Thread_Create(Worker_Run, NULL);
 }
 
 
@@ -77,10 +95,10 @@ SAL_Socket SAL_Socket_Connect(const int8* address, uint16 port) {
         SOCKET server;
         SOCKADDR_IN serverAddress;
 
-        if (!initialized) {
+        if (!winsockInitialized) {
 	        WSADATA startupData;
 	        WSAStartup(514, &startupData);
-            initialized = true;
+            winsockInitialized = true;
         }
 
         server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -112,10 +130,10 @@ SAL_Socket SAL_Socket_Listen(const int8* port) {
 	    ADDRINFO hints;
 	    SOCKET listener;
 
-        if (!initialized) {
+        if (!winsockInitialized) {
 	        WSADATA startupData;
 	        WSAStartup(514, &startupData);
-            initialized = true;
+            winsockInitialized = true;
         }
 	    
 	    ZeroMemory(&hints, sizeof(hints));
@@ -124,11 +142,27 @@ SAL_Socket SAL_Socket_Listen(const int8* port) {
 	    hints.ai_protocol = IPPROTO_TCP;
 	    hints.ai_flags = AI_PASSIVE;
 
-	    getaddrinfo(NULL, port, &hints, &addressInfo);
+	    if (!getaddrinfo(NULL, port, &hints, &addressInfo)) {
+            freeaddrinfo(addressInfo);
+            return NULL;
+        }
+
 	    listener = socket(addressInfo->ai_family, addressInfo->ai_socktype, addressInfo->ai_protocol);
-	    bind(listener, addressInfo->ai_addr, (int32)addressInfo->ai_addrlen);
+        if (listener == INVALID_SOCKET) {
+            freeaddrinfo(addressInfo);
+            return NULL;
+        }
+
+	    if (!bind(listener, addressInfo->ai_addr, (int32)addressInfo->ai_addrlen)) {
+            freeaddrinfo(addressInfo);
+            closesocket(listener);
+            return NULL;
+        }
+
         freeaddrinfo(addressInfo);
-	    listen(listener, SOMAXCONN);
+	    
+        if (!listen(listener, SOMAXCONN))
+            return NULL;
 	
 	    return listener;
     #elif defined POSIX
@@ -196,22 +230,22 @@ uint32 SAL_Socket_Read(SAL_Socket socket, uint8* buffer, uint32 bufferSize) {
 }
 
 void SAL_Socket_ReadAsync(SAL_Socket socket, uint8* buffer, uint32 bufferSize, SAL_Socket_ReadCallback callback) {
-    AsyncWorker_Callback* callbackData;
+    CallbackState* callbackData;
 
-    if (!AsyncWorkerInitialized) {
-        AsyncWorker_Initialize();
-        AsyncWorkerInitialized = true;
+    if (!workerInitialized) {
+        Worker_Initialize();
+        workerInitialized = true;
     }
 
-    callbackData = Allocate(AsyncWorker_Callback);
+    callbackData = Allocate(CallbackState);
     callbackData->Socket = socket;
     callbackData->Buffer = buffer;
     callbackData->BufferSize = bufferSize;
     callbackData->Callback = callback;
 
-    SAL_Mutex_Acquire(CallbacksMutex);
-    LinkedList_Append(&Callbacks, callbackData);
-    SAL_Mutex_Free(CallbacksMutex);
+    SAL_Mutex_Acquire(callbackListMutex);
+    LinkedList_Append(&callbackList, callbackData);
+    SAL_Mutex_Release(callbackListMutex);
 }
 
 /**
