@@ -11,14 +11,14 @@
 	typedef void* SAL_Semaphore;
 #elif defined POSIX
 	#include <pthread.h>
-  #include <semaphore.h>
-    
+	#include <semaphore.h>
+
 	#define SAL_Thread_Start(Name) void* Name(void* startupArgument)
 	typedef void* (*SAL_Thread_StartAddress)(void* SAL_Thread_StartArgument);
 	typedef pthread_t SAL_Thread;
-	
+
 	typedef pthread_mutex_t* SAL_Mutex;
-    typedef sem_t* SAL_Semaphore;
+	typedef sem_t* SAL_Semaphore;
 #endif
 
 public SAL_Thread SAL_Thread_Create(SAL_Thread_StartAddress startAddress, void* startParameter);

@@ -2,9 +2,9 @@
 #define INCLUDE_SAL_COMMON
 
 #ifdef _WIN64
-  #define WINDOWS
+	#define WINDOWS
 #elif __unix__
-  #define POSIX
+	#define POSIX
 #endif
 
 #include <Utilities/Common.h>
