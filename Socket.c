@@ -47,6 +47,7 @@ static SAL_Thread_Start(Worker_Run) {
 
 		SAL_Mutex_Acquire(callbackListMutex);
 
+		/* iterates over all sockets with registered callbacks. It either finishes when 1024 sockets have been added or the socket list is exhausted. If the socket list is greater than 1024, the position is remembered on the next loop   */
 		for (i = 0; i < FD_SETSIZE && LinkedList_IterateNext(currentRegistration, selectIterator, CallbackRegistration); i++)
 			FD_SET(currentRegistration->Socket, &readSet);
 		LinkedList_ResetIterator(selectIterator);
@@ -54,11 +55,11 @@ static SAL_Thread_Start(Worker_Run) {
 		select(0, &readSet, NULL, NULL, NULL);
 
 		for (i = 0; i < readSet.fd_count; i++) {
-			LinkedList_ForEach(currentRegistration, &callbackList, CallbackRegistration) {
+			LinkedList_ForEach(currentRegistration, &callbackList, CallbackRegistration) { /* iterates over every socket with a registered callback to find the callbacks associated with the socket returned by select */
 				if (currentRegistration->Socket == readSet.fd_array[i]) {
 					bytesRead = SAL_Socket_Read(currentRegistration->Socket, currentRegistration->Buffer, CALLBACK_BUFFER_SIZE);
 
-					LinkedList_ForEachPtr(callback, &currentRegistration->Callbacks, SAL_Socket_ReadCallback)
+					LinkedList_ForEachPtr(callback, &currentRegistration->Callbacks, SAL_Socket_ReadCallback) /* for every callback associated with the socket, invoke the callback */
 						callback(currentRegistration->Buffer, bytesRead);
 				}
 			}
