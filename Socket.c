@@ -39,7 +39,7 @@ static SAL_Thread_Start(AsyncWorker_Run) {
 	uint32 i;
 	uint32 bytesRead;
 	AsyncSocketEntry* entry;
-	SAL_Socket* socket;
+	SAL_Socket socket;
 	SAL_Socket_ReadCallback callback;
 	LinkedList_Iterator* selectIterator;
 
@@ -51,8 +51,13 @@ static SAL_Thread_Start(AsyncWorker_Run) {
 		SAL_Mutex_Acquire(asyncSocketLookupMutex);
 
 		/* iterates over all sockets with registered callbacks. It either finishes when 1024 sockets have been added or the socket list is exhausted. If the socket list is greater than 1024, the position is remembered on the next loop   */
-		for (i = 0; i < FD_SETSIZE && LinkedList_IterateNext(socket, selectIterator, SAL_Socket*); i++)
-			FD_SET(entry->Socket, &readSet);
+		for (i = 0; i < FD_SETSIZE && LinkedList_IterateNext(socket, selectIterator, SAL_Socket); i++) {
+			#ifdef WINDOWS
+				FD_SET((SOCKET)socket, &readSet);
+			#else defined POSIX
+
+			#endif
+		}
 		LinkedList_ResetIterator(selectIterator);
 
 		select(0, &readSet, NULL, NULL, NULL);
@@ -157,7 +162,7 @@ SAL_Socket SAL_Socket_ConnectIP(uint32 ip, uint16 port) {
 	if (connect(server, (SOCKADDR*)&serverAddress, sizeof(serverAddress)) == SOCKET_ERROR)
 		return NULL;
 
-	return server;
+	return (SAL_Socket)server;
 #elif defined POSIX
 
 #endif
@@ -209,7 +214,7 @@ SAL_Socket SAL_Socket_Listen(const int8* port) {
 	if (!listen(listener, SOMAXCONN))
 		return NULL;
 
-	return listener;
+	return (SAL_Socket)listener;
 #elif defined POSIX
 
 #endif
@@ -226,14 +231,14 @@ SAL_Socket SAL_Socket_Listen(const int8* port) {
  */
 SAL_Socket SAL_Socket_Accept(SAL_Socket listener, uint32* acceptedAddress) {
 #ifdef WINDOWS
-	SOCKET acceptedSocket;
+	SOCKET rawSocket;
 	SOCKADDR_IN remoteAddress;
 	int32 addressLength = sizeof(remoteAddress);
-
-	acceptedSocket = accept(listener, (SOCKADDR*)&remoteAddress, &addressLength);
-	if (acceptedSocket != INVALID_SOCKET) {
+	
+	rawSocket = accept((SOCKET)listener, (SOCKADDR*)&remoteAddress, &addressLength);
+	if (rawSocket != INVALID_SOCKET) {
 		*acceptedAddress = remoteAddress.sin_addr.S_un.S_addr;
-		return acceptedSocket;
+		return (SAL_Socket)rawSocket;
 	}
 
 	return NULL;
@@ -248,18 +253,16 @@ SAL_Socket SAL_Socket_Accept(SAL_Socket listener, uint32* acceptedAddress) {
  * @param socket Socket to close
  */
 void SAL_Socket_Close(SAL_Socket socket) {
-	SAL_Socket* current;
-
 #ifdef WINDOWS
-	shutdown(socket, SD_BOTH);
-	closesocket(socket);
+	shutdown((SOCKET)socket, SD_BOTH);
+	closesocket((SOCKET)socket);
 #elif defined POSIX
 
 #endif
 
 	SAL_Mutex_Acquire(asyncSocketLookupMutex);
 
-	Lookup_Remove(&asyncSocketLookup, socket);
+	Lookup_Remove(&asyncSocketLookup, (uint64)socket);
 	LinkedList_Remove(&asyncSocketList, socket);
 
 	if (asyncSocketList.Count == 0) {
@@ -285,7 +288,7 @@ uint32 SAL_Socket_Read(SAL_Socket socket, uint8* buffer, uint32 bufferSize) {
 
 	assert(buffer);
 
-	received = recv(socket, (int8*)buffer, bufferSize, 0);
+	received = recv((SOCKET)socket, (int8*)buffer, bufferSize, 0);
 	if (received <= 0)
 		return 0;
 
@@ -311,12 +314,12 @@ boolean SAL_Socket_Write(SAL_Socket socket, const uint8* toWrite, uint32 writeAm
 	assert(toWrite);
 
 	mode = 1;
-	ioctlsocket(socket, FIONBIO, &mode);
+	ioctlsocket((SOCKET)socket, FIONBIO, &mode);
 
-	result = send(socket, (const int8*)toWrite, writeAmount, 0);
+	result = send((SOCKET)socket, (const int8*)toWrite, writeAmount, 0);
 
 	mode = 0;
-	ioctlsocket(socket, FIONBIO, &mode);
+	ioctlsocket((SOCKET)socket, FIONBIO, &mode);
 
 	return result != SOCKET_ERROR;
 #elif defined POSIX
@@ -334,7 +337,6 @@ boolean SAL_Socket_Write(SAL_Socket socket, const uint8* toWrite, uint32 writeAm
  */
 void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback callback) {
 	AsyncSocketEntry* entry;
-	SAL_Socket* socketEntry;
 
 	assert(socket);
 	assert(callback);
@@ -346,7 +348,7 @@ void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback 
 
 	SAL_Mutex_Acquire(asyncSocketLookupMutex);
 
-	if (entry = Lookup_Find(&asyncSocketLookup, socket, AsyncSocketEntry*)) {
+	if (entry = Lookup_Find(&asyncSocketLookup, (uint64)socket, AsyncSocketEntry*)) {
 		LinkedList_Append(&entry->Callbacks, callback);
 	}
 	else {
@@ -354,12 +356,11 @@ void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback 
 		entry->Socket = socket;
 		LinkedList_Initialize(&entry->Callbacks, NULL);
 		LinkedList_Append(&entry->Callbacks, callback);
-		Lookup_Add(&asyncSocketLookup, socket, entry, true);
+		Lookup_Add(&asyncSocketLookup, (uint64)socket, entry, true);
 	}
 
-	*socketEntry = socket;
-	if (!LinkedList_Find(&asyncSocketList, socketEntry, SAL_Socket*))
-		LinkedList_Append(&asyncSocketList, socketEntry);
+	if (!LinkedList_Find(&asyncSocketList, socket, SAL_Socket))
+		LinkedList_Append(&asyncSocketList, socket);
 
 	SAL_Mutex_Release(asyncSocketLookupMutex);
 }

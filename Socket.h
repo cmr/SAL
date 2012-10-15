@@ -5,7 +5,7 @@
 #include <Utilities/Strings.h>
 
 #ifdef WINDOWS
-	typedef uint64 SAL_Socket;
+	typedef uint64* SAL_Socket;
 #elif defined POSIX
 	typedef void* SAL_Socket;
 #endif
