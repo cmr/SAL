@@ -364,3 +364,17 @@ void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback 
 
 	SAL_Mutex_Release(asyncSocketLookupMutex);
 }
+
+/**
+ * Unregisters all callbacks for @a socket.
+ *
+ * @param socket The socket to clear all callbacks from
+ */
+void SAL_Socket_UnregisterSocketCallbacks(SAL_Socket socket) {
+	SAL_Mutex_Acquire(&asyncSocketLookupMutex);
+
+	LinkedList_Remove(&asyncSocketList, socket);
+	Lookup_Remove(&asyncSocketLookup, (uint64)socket);
+
+	SAL_Mutex_Release(&asyncSocketLookupMutex);
+}
