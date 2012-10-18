@@ -24,10 +24,10 @@
 static struct AsyncSocketEntry {
 	SAL_Socket Socket;
 	LinkedList Callbacks;
-	uint8 Buffer[CALLBACK_BUFFER_SIZE];
 };
 typedef struct AsyncSocketEntry AsyncSocketEntry;
 
+static uint8 asyncSocketBuffer[CALLBACK_BUFFER_SIZE];
 static LinkedList asyncSocketList;
 static Lookup asyncSocketLookup;
 static SAL_Mutex asyncSocketLookupMutex;
@@ -65,9 +65,9 @@ static SAL_Thread_Start(AsyncWorker_Run) {
 		for (i = 0; i < readSet.fd_count; i++) {
 			entry = Lookup_Find(&asyncSocketLookup, readSet.fd_array[i], AsyncSocketEntry*); /* find the entry owned by the ready socket */
 			if (entry) {
-				bytesRead = SAL_Socket_Read(entry->Socket, entry->Buffer, CALLBACK_BUFFER_SIZE);
+				bytesRead = SAL_Socket_Read(entry->Socket, asyncSocketBuffer, CALLBACK_BUFFER_SIZE);
 				LinkedList_ForEach(callback, &entry->Callbacks, SAL_Socket_ReadCallback) { /* for every callback associated with the socket, invoke the callback */
-					callback(entry->Buffer, bytesRead);
+					callback(asyncSocketBuffer, bytesRead);
 				}
 			}
 		}
