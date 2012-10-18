@@ -30,7 +30,7 @@ typedef struct AsyncSocketEntry AsyncSocketEntry;
 static uint8 asyncSocketBuffer[CALLBACK_BUFFER_SIZE];
 static LinkedList asyncSocketList;
 static Lookup asyncSocketLookup;
-static SAL_Mutex asyncSocketLookupMutex;
+static SAL_Mutex asyncSocketMutex;
 static SAL_Thread asyncWorker;
 static boolean asyncWorkerRunning = false;
 
@@ -48,7 +48,7 @@ static SAL_Thread_Start(AsyncWorker_Run) {
 	while (asyncWorkerRunning) {
 		FD_ZERO(&readSet);
 
-		SAL_Mutex_Acquire(asyncSocketLookupMutex);
+		SAL_Mutex_Acquire(asyncSocketMutex);
 
 		/* iterates over all sockets with registered callbacks. It either finishes when 1024 sockets have been added or the socket list is exhausted. If the socket list is greater than 1024, the position is remembered on the next loop   */
 		for (i = 0; i < FD_SETSIZE && LinkedList_IterateNext(socket, selectIterator, SAL_Socket); i++) {
@@ -72,7 +72,7 @@ static SAL_Thread_Start(AsyncWorker_Run) {
 			}
 		}
 
-		SAL_Mutex_Release(asyncSocketLookupMutex);
+		SAL_Mutex_Release(asyncSocketMutex);
 		SAL_Thread_Sleep(25);
 	}
 
@@ -84,7 +84,7 @@ static SAL_Thread_Start(AsyncWorker_Run) {
 static void AsyncWorker_Initialize() {
 	Lookup_Initialize(&asyncSocketLookup);
 	LinkedList_Initialize(&asyncSocketList, NULL);
-	asyncSocketLookupMutex = SAL_Mutex_Create();
+	asyncSocketMutex = SAL_Mutex_Create();
 	asyncWorkerRunning = true;
 	asyncWorker = SAL_Thread_Create(AsyncWorker_Run, NULL);
 }
@@ -92,7 +92,7 @@ static void AsyncWorker_Initialize() {
 static void AsyncWorker_Shutdown() {
 	asyncWorkerRunning = false;
 	SAL_Thread_Join(asyncWorker);
-	SAL_Mutex_Free(asyncSocketLookupMutex);
+	SAL_Mutex_Free(asyncSocketMutex);
 	Lookup_Uninitialize(&asyncSocketLookup);
 	LinkedList_Uninitialize(&asyncSocketList);
 }
@@ -260,17 +260,17 @@ void SAL_Socket_Close(SAL_Socket socket) {
 
 #endif
 
-	SAL_Mutex_Acquire(asyncSocketLookupMutex);
+	SAL_Mutex_Acquire(asyncSocketMutex);
 
 	Lookup_Remove(&asyncSocketLookup, (uint64)socket);
 	LinkedList_Remove(&asyncSocketList, socket);
 
 	if (asyncSocketList.Count == 0) {
-		SAL_Mutex_Release(asyncSocketLookupMutex);
+		SAL_Mutex_Release(asyncSocketMutex);
 		AsyncWorker_Shutdown();
 	}
 	else {
-		SAL_Mutex_Release(asyncSocketLookupMutex);
+		SAL_Mutex_Release(asyncSocketMutex);
 	}
 }
 
@@ -346,7 +346,7 @@ void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback 
 		asyncWorkerRunning = true;
 	}
 
-	SAL_Mutex_Acquire(asyncSocketLookupMutex);
+	SAL_Mutex_Acquire(asyncSocketMutex);
 
 	if (entry = Lookup_Find(&asyncSocketLookup, (uint64)socket, AsyncSocketEntry*)) {
 		LinkedList_Append(&entry->Callbacks, callback);
@@ -362,7 +362,7 @@ void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback 
 	if (!LinkedList_Find(&asyncSocketList, socket, SAL_Socket))
 		LinkedList_Append(&asyncSocketList, socket);
 
-	SAL_Mutex_Release(asyncSocketLookupMutex);
+	SAL_Mutex_Release(asyncSocketMutex);
 }
 
 /**
@@ -371,10 +371,10 @@ void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback 
  * @param socket The socket to clear all callbacks from
  */
 void SAL_Socket_UnregisterSocketCallbacks(SAL_Socket socket) {
-	SAL_Mutex_Acquire(&asyncSocketLookupMutex);
+	SAL_Mutex_Acquire(&asyncSocketMutex);
 
 	LinkedList_Remove(&asyncSocketList, socket);
 	Lookup_Remove(&asyncSocketLookup, (uint64)socket);
 
-	SAL_Mutex_Release(&asyncSocketLookupMutex);
+	SAL_Mutex_Release(&asyncSocketMutex);
 }
