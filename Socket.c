@@ -29,7 +29,7 @@ typedef struct AsyncSocketEntry AsyncSocketEntry;
 
 static struct CallbackEntry {
 	SAL_Socket_ReadCallback Callback;
-	const void* State;
+	void* State;
 };
 typedef struct CallbackEntry CallbackEntry;
 
@@ -341,7 +341,7 @@ boolean SAL_Socket_Write(SAL_Socket socket, const uint8* const toWrite, const ui
  *
  * @warning The buffer passed to @a callback is the internal buffer. Do not reference it outside out the callback. 
  */
-void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback callback, const void* const state) {
+void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback callback, void* const state) {
 	AsyncSocketEntry* socketEntry;
 	CallbackEntry* callbackEntry;
 
