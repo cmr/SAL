@@ -29,7 +29,7 @@ typedef struct AsyncSocketEntry AsyncSocketEntry;
 
 static struct CallbackEntry {
 	SAL_Socket_ReadCallback Callback;
-	void* State;
+	const void* State;
 };
 typedef struct CallbackEntry CallbackEntry;
 
@@ -110,7 +110,7 @@ static void AsyncWorker_Shutdown() {
  * @param address A string specifying the hostname to connect to
  * @param port Port to connect to
  */
-SAL_Socket SAL_Socket_Connect(const int8* address, uint16 port) {
+SAL_Socket SAL_Socket_Connect(const int8* const address, const uint16 port) {
 #ifdef WINDOWS
 	unsigned long hostAddress;
 	HOSTENT* hostEntry;
@@ -146,7 +146,7 @@ SAL_Socket SAL_Socket_Connect(const int8* address, uint16 port) {
  * @param ip IP Address of the remote host
  * @param port Port to connect to
  */
-SAL_Socket SAL_Socket_ConnectIP(uint32 ip, uint16 port) {
+SAL_Socket SAL_Socket_ConnectIP(const uint32 ip, const uint16 port) {
 #ifdef WINDOWS
 	SOCKET server;
 	SOCKADDR_IN serverAddress;
@@ -180,7 +180,7 @@ SAL_Socket SAL_Socket_ConnectIP(uint32 ip, uint16 port) {
  * @param port String with the port number or name (e.g, "http" or "80")
  * @returns a socket you can call @ref SAL_Socket_Accept on
  */
-SAL_Socket SAL_Socket_Listen(const int8* port) {
+SAL_Socket SAL_Socket_Listen(const int8* const port) {
 #ifdef WINDOWS
 	ADDRINFO* addressInfo;
 	ADDRINFO hints;
@@ -235,7 +235,7 @@ SAL_Socket SAL_Socket_Listen(const int8* port) {
  *
  * @warning This function is currently broken and platform-dependent
  */
-SAL_Socket SAL_Socket_Accept(SAL_Socket listener, uint32* acceptedAddress) {
+SAL_Socket SAL_Socket_Accept(SAL_Socket listener, uint32* const acceptedAddress) {
 #ifdef WINDOWS
 	SOCKET rawSocket;
 	SOCKADDR_IN remoteAddress;
@@ -288,7 +288,7 @@ void SAL_Socket_Close(SAL_Socket socket) {
  * @param bufferSize Size of @a buffer
  * @returns Number of bytes read
  */
-uint32 SAL_Socket_Read(SAL_Socket socket, uint8* buffer, uint32 bufferSize) {
+uint32 SAL_Socket_Read(SAL_Socket socket, uint8* const buffer, const uint32 bufferSize) {
 #ifdef WINDOWS
 	int32 received;
 
@@ -312,7 +312,7 @@ uint32 SAL_Socket_Read(SAL_Socket socket, uint8* buffer, uint32 bufferSize) {
  * @param writeAmount Number of bytes to write
  * @returns true if the call was successful, false if it failed.
  */
-boolean SAL_Socket_Write(SAL_Socket socket, const uint8* toWrite, uint32 writeAmount) {
+boolean SAL_Socket_Write(SAL_Socket socket, const uint8* const toWrite, const uint32 writeAmount) {
 #ifdef WINDOWS
 	unsigned long mode;
 	int32 result;
@@ -341,7 +341,7 @@ boolean SAL_Socket_Write(SAL_Socket socket, const uint8* toWrite, uint32 writeAm
  *
  * @warning The buffer passed to @a callback is the internal buffer. Do not reference it outside out the callback. 
  */
-void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback callback, void* state) {
+void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback callback, const void* const state) {
 	AsyncSocketEntry* socketEntry;
 	CallbackEntry* callbackEntry;
 
