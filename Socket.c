@@ -27,6 +27,12 @@ static struct AsyncSocketEntry {
 };
 typedef struct AsyncSocketEntry AsyncSocketEntry;
 
+static struct CallbackEntry {
+	SAL_Socket_ReadCallback Callback;
+	void* State;
+};
+typedef struct CallbackEntry CallbackEntry;
+
 static uint8 asyncSocketBuffer[CALLBACK_BUFFER_SIZE];
 static LinkedList asyncSocketList;
 static Lookup asyncSocketLookup;
@@ -38,9 +44,9 @@ static SAL_Thread_Start(AsyncWorker_Run) {
 	fd_set readSet;
 	uint32 i;
 	uint32 bytesRead;
-	AsyncSocketEntry* entry;
+	AsyncSocketEntry* socketEntry;
+	CallbackEntry* callbackEntry;
 	SAL_Socket socket;
-	SAL_Socket_ReadCallback callback;
 	LinkedList_Iterator* selectIterator;
 
 	selectIterator = LinkedList_BeginIterate(&asyncSocketList);
@@ -63,11 +69,11 @@ static SAL_Thread_Start(AsyncWorker_Run) {
 		select(0, &readSet, NULL, NULL, NULL);
 
 		for (i = 0; i < readSet.fd_count; i++) {
-			entry = Lookup_Find(&asyncSocketLookup, readSet.fd_array[i], AsyncSocketEntry*); /* find the entry owned by the ready socket */
-			if (entry) {
-				bytesRead = SAL_Socket_Read(entry->Socket, asyncSocketBuffer, CALLBACK_BUFFER_SIZE);
-				LinkedList_ForEach(callback, &entry->Callbacks, SAL_Socket_ReadCallback) { /* for every callback associated with the socket, invoke the callback */
-					callback(asyncSocketBuffer, bytesRead);
+			socketEntry = Lookup_Find(&asyncSocketLookup, readSet.fd_array[i], AsyncSocketEntry*); /* find the entry owned by the ready socket */
+			if (socketEntry) {
+				bytesRead = SAL_Socket_Read(socketEntry->Socket, asyncSocketBuffer, CALLBACK_BUFFER_SIZE);
+				LinkedList_ForEach(callbackEntry, &socketEntry->Callbacks, CallbackEntry*) { /* for every callback associated with the socket, invoke the callback */
+					callbackEntry->Callback(asyncSocketBuffer, bytesRead, callbackEntry->State);
 				}
 			}
 		}
@@ -82,7 +88,7 @@ static SAL_Thread_Start(AsyncWorker_Run) {
 }
 
 static void AsyncWorker_Initialize() {
-	Lookup_Initialize(&asyncSocketLookup);
+	Lookup_Initialize(&asyncSocketLookup, Memory_Free);
 	LinkedList_Initialize(&asyncSocketList, NULL);
 	asyncSocketMutex = SAL_Mutex_Create();
 	asyncWorkerRunning = true;
@@ -335,8 +341,9 @@ boolean SAL_Socket_Write(SAL_Socket socket, const uint8* toWrite, uint32 writeAm
  *
  * @warning The buffer passed to @a callback is the internal buffer. Do not reference it outside out the callback. 
  */
-void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback callback) {
-	AsyncSocketEntry* entry;
+void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback callback, void* state) {
+	AsyncSocketEntry* socketEntry;
+	CallbackEntry* callbackEntry;
 
 	assert(socket);
 	assert(callback);
@@ -346,17 +353,21 @@ void SAL_Socket_RegisterReadCallback(SAL_Socket socket, SAL_Socket_ReadCallback 
 		asyncWorkerRunning = true;
 	}
 
+	callbackEntry = Allocate(CallbackEntry);
+	callbackEntry->Callback = callback;
+	callbackEntry->State = state;
+
 	SAL_Mutex_Acquire(asyncSocketMutex);
 
-	if (entry = Lookup_Find(&asyncSocketLookup, (uint64)socket, AsyncSocketEntry*)) {
-		LinkedList_Append(&entry->Callbacks, callback);
+	if (socketEntry = Lookup_Find(&asyncSocketLookup, (uint64)socket, AsyncSocketEntry*)) {
+		LinkedList_Append(&socketEntry->Callbacks, callbackEntry);
 	}
 	else {
-		entry = Allocate(AsyncSocketEntry);
-		entry->Socket = socket;
-		LinkedList_Initialize(&entry->Callbacks, NULL);
-		LinkedList_Append(&entry->Callbacks, callback);
-		Lookup_Add(&asyncSocketLookup, (uint64)socket, entry, true);
+		socketEntry = Allocate(AsyncSocketEntry);
+		socketEntry->Socket = socket;
+		LinkedList_Initialize(&socketEntry->Callbacks, Memory_Free);
+		LinkedList_Append(&socketEntry->Callbacks, callbackEntry);
+		Lookup_Add(&asyncSocketLookup, (uint64)socket, socketEntry, true);
 	}
 
 	if (!LinkedList_Find(&asyncSocketList, socket, SAL_Socket))
