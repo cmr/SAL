@@ -267,19 +267,6 @@ void SAL_Socket_Close(SAL_Socket socket) {
 #elif defined POSIX
 
 #endif
-
-	SAL_Mutex_Acquire(asyncSocketMutex);
-
-	Lookup_Remove(&asyncSocketLookup, (uint64)socket);
-	LinkedList_Remove(&asyncSocketList, socket);
-
-	if (asyncSocketList.Count == 0) {
-		SAL_Mutex_Release(asyncSocketMutex);
-		AsyncWorker_Shutdown();
-	}
-	else {
-		SAL_Mutex_Release(asyncSocketMutex);
-	}
 }
 
 /**
@@ -388,6 +375,14 @@ void SAL_Socket_UnregisterSocketCallbacks(SAL_Socket socket) {
 
 	LinkedList_Remove(&asyncSocketList, socket);
 	Lookup_Remove(&asyncSocketLookup, (uint64)socket);
+	
+	if (asyncSocketList.Count == 0) {
+		SAL_Mutex_Release(asyncSocketMutex);
+		AsyncWorker_Shutdown();
+	}
+	else {
+		SAL_Mutex_Release(asyncSocketMutex);
+	}
 
-	SAL_Mutex_Release(&asyncSocketMutex);
+
 }
