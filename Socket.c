@@ -1,6 +1,9 @@
 /** vim: set noet ci sts=0 sw=4 ts=4
  * @file Socket.c
  * @brief TCP networking functions
+ *
+ * @warning Under windows, only IPv4 is implemented.
+ * Under POSIX, IPv4 and IPv6 are supported.
  */
 #include "Socket.h"
 
@@ -19,6 +22,14 @@
 	#include <ws2tcpip.h>
 
 	static boolean winsockInitialized = false;
+#elif defined POSIX
+	#include <sys/select.h>
+	#include <sys/socket.h>
+	#include <sys/types.h>
+	#include <netinet/in.h>
+	#include <arpa/inet.h>
+	#include <netdb.h>
+	#include <stdio.h>
 #endif
 
 static struct AsyncSocketEntry {
@@ -136,14 +147,34 @@ SAL_Socket SAL_Socket_Connect(const int8* const address, const uint16 port) {
 		return SAL_Socket_ConnectIP(hostAddress, port);
 	}
 #elif defined POSIX
+	SAL_Socket sock;
+	struct addrinfo *server, hints;
+	char *_port = AllocateArray(char, 6);
+	snprintf(_port, 6, "%d", port);
 
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC; // IPvWhatever
+	hints.ai_socktype = SOCK_STREAM; // TCP
+
+	if (getaddrinfo(address, _port, &hints, &server) != 0) {
+		return 0;
+	}
+
+	sock = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
+
+	if (connect(sock, server->ai_addr, server->ai_addrlen) == -1) {
+		sock = 0; // will catch socket() failure too
+	}
+
+	freeaddrinfo(server);
+	return sock;
 #endif
 }
 
 /**
  * Create a TCP connection to a host.
  *
- * @param ip IP Address of the remote host
+ * @param ip IPv4 Address of the remote host
  * @param port Port to connect to
  */
 SAL_Socket SAL_Socket_ConnectIP(const uint32 ip, const uint16 port) {
@@ -224,7 +255,37 @@ SAL_Socket SAL_Socket_Listen(const int8* const port) {
 
 	return (SAL_Socket)listener;
 #elif defined POSIX
+	SAL_Socket sock;
+	struct addrinfo *server, hints;
 
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC; // IPvWhatever
+	hints.ai_socktype = SOCK_STREAM; // TCP
+	hints.ai_flags = AI_PASSIVE;
+
+	if (getaddrinfo(NULL, port, &hints, &server) != 0) {
+		return 0;
+	}
+
+	sock = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
+	if (sock == -1) {
+		goto error;
+	}
+
+	if (bind(sock, server->ai_addr, server->ai_addrlen) != 0) {
+		goto error_after;
+	}
+
+	if (listen(sock, SOMAXCONN) != 0) {
+		goto error_after;
+	}
+
+	return sock;
+error_after:
+	close(sock);
+error:
+	freeaddrinfo(server);
+	return 0;
 #endif
 }
 
@@ -251,7 +312,12 @@ SAL_Socket SAL_Socket_Accept(SAL_Socket listener, uint32* const acceptedAddress)
 
 	return NULL;
 #elif defined POSIX
-
+	SAL_Socket sock;
+	sock = accept(listener, NULL, NULL);
+	if (sock == -1) {
+		sock = 0;
+	}
+	return sock;
 #endif
 }
 
@@ -265,7 +331,8 @@ void SAL_Socket_Close(SAL_Socket socket) {
 	shutdown((SOCKET)socket, SD_BOTH);
 	closesocket((SOCKET)socket);
 #elif defined POSIX
-
+	shutdown(socket, SHUT_RDWR);
+	close(socket);
 #endif
 }
 
@@ -278,7 +345,6 @@ void SAL_Socket_Close(SAL_Socket socket) {
  * @returns Number of bytes read
  */
 uint32 SAL_Socket_Read(SAL_Socket socket, uint8* const buffer, const uint32 bufferSize) {
-#ifdef WINDOWS
 	int32 received;
 
 	assert(buffer);
@@ -288,9 +354,6 @@ uint32 SAL_Socket_Read(SAL_Socket socket, uint8* const buffer, const uint32 buff
 		return 0;
 
 	return (uint32)received;
-#elif defined POSIX
-
-#endif
 }
 
 /**
@@ -318,7 +381,13 @@ boolean SAL_Socket_Write(SAL_Socket socket, const uint8* const toWrite, const ui
 
 	return result != SOCKET_ERROR;
 #elif defined POSIX
+	int32 result;
 
+	assert(toWrite);
+
+	result = send(socket, (const int8*)toWrite, writeAmount, 0);
+
+	return result != -1;
 #endif
 }
 

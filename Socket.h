@@ -7,7 +7,7 @@
 #ifdef WINDOWS
 	typedef uint64* SAL_Socket;
 #elif defined POSIX
-	typedef void* SAL_Socket;
+	typedef int SAL_Socket;
 #endif
 
 typedef void (*SAL_Socket_ReadCallback)(const uint8* const buffer, const uint32 length, void* const state);
