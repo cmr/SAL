@@ -185,31 +185,32 @@ SAL_Socket SAL_Socket_Listen(const int8* const port) {
 	ADDRINFO* addressInfo;
 	ADDRINFO hints;
 	SOCKET listener;
+	int32 errorCode;
 
 	if (!winsockInitialized) {
 		WSADATA startupData;
 		WSAStartup(514, &startupData);
 		winsockInitialized = true;
 	}
-
+	
+	listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (listener == INVALID_SOCKET)
+		return NULL;
+	
 	ZeroMemory(&hints, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_PASSIVE;
 
-	if (!getaddrinfo(NULL, port, &hints, &addressInfo)) {
+	errorCode = getaddrinfo(NULL, port, &hints, &addressInfo);
+	if (errorCode != 0) {
 		freeaddrinfo(addressInfo);
 		return NULL;
 	}
 
-	listener = socket(addressInfo->ai_family, addressInfo->ai_socktype, addressInfo->ai_protocol);
-	if (listener == INVALID_SOCKET) {
-		freeaddrinfo(addressInfo);
-		return NULL;
-	}
-
-	if (!bind(listener, addressInfo->ai_addr, (int32)addressInfo->ai_addrlen)) {
+	errorCode = bind(listener, addressInfo->ai_addr, (int32)addressInfo->ai_addrlen);
+	if (errorCode != 0) {
 		freeaddrinfo(addressInfo);
 		closesocket(listener);
 		return NULL;
@@ -217,7 +218,8 @@ SAL_Socket SAL_Socket_Listen(const int8* const port) {
 
 	freeaddrinfo(addressInfo);
 
-	if (!listen(listener, SOMAXCONN))
+	errorCode = listen(listener, SOMAXCONN);
+	if (errorCode != 0)
 		return NULL;
 
 	return (SAL_Socket)listener;
