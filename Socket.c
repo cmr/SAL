@@ -7,8 +7,7 @@
  */
 #include "Socket.h"
 
-#include <Utilities/Lookup.h>
-#include <Utilities/LinkedList.h>
+#include <Utilities/AsyncLinkedList.h>
 #include <Utilities/Memory.h>
 #include "Thread.h"
 
@@ -32,72 +31,72 @@
 	#include <stdio.h>
 #endif
 
+static void SAL_Socket_CallbackWorker_Initialize();
+static void SAL_Socket_CallbackWorker_Shutdown();
+static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run);
+
 static uint8 asyncSocketBuffer[CALLBACK_BUFFER_SIZE];
-static LinkedList asyncSocketList;
-static SAL_Mutex asyncSocketMutex;
+static AsyncLinkedList asyncSocketList;
 static SAL_Thread asyncWorker;
 static boolean asyncWorkerRunning = false;
 
-static SAL_Thread_Start(AsyncWorker_Run) {
+static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run) {
 	fd_set readSet;
 	uint32 i;
 	uint32 bytesRead;
 	SAL_Socket* socketEntry;
 	SAL_Socket* socket;
-	LinkedList_Iterator* selectIterator;
+	AsyncLinkedList_Iterator* selectIterator;
 	struct timeval selectTimeout;
 
-	selectIterator = LinkedList_BeginIterate(&asyncSocketList);
+	selectIterator = AsyncLinkedList_BeginIterate(&asyncSocketList);
 	selectTimeout.tv_usec = 250;
 	selectTimeout.tv_sec = 0;
 
 	while (asyncWorkerRunning) {
 		FD_ZERO(&readSet);
 
-		SAL_Mutex_Acquire(asyncSocketMutex);
-
 		/* iterates over all sockets with registered callbacks. It either finishes when 1024 sockets have been added or the socket list is exhausted. If the socket list is greater than 1024, the position is remembered on the next loop   */
-		for (i = 0; i < FD_SETSIZE && LinkedList_IterateNext(socket, selectIterator, SAL_Socket*); i++) {
+		for (i = 0; i < FD_SETSIZE && AsyncLinkedList_IterateNext(socket, selectIterator, SAL_Socket*); i++) {
 			#ifdef WINDOWS
 				FD_SET((SOCKET)socket->RawSocket, &readSet);
 			#else defined POSIX
 
 			#endif
 		}
-		LinkedList_ResetIterator(selectIterator);
+
+		if (socket == NULL)
+			AsyncLinkedList_ResetIterator(selectIterator);
 
 		select(0, &readSet, NULL, NULL, &selectTimeout);
 
 		for (i = 0; i < readSet.fd_count; i++) {
-			LinkedList_ForEach(socketEntry, &asyncSocketList, SAL_Socket*) {
+			AsyncLinkedList_ForEach(socketEntry, &asyncSocketList, SAL_Socket*) {
 				if (socketEntry->RawSocket == readSet.fd_array[i]) {
 					bytesRead = SAL_Socket_Read(socketEntry, asyncSocketBuffer, CALLBACK_BUFFER_SIZE);
-					socketEntry->AsyncReadCallback(asyncSocketBuffer, bytesRead, socketEntry->AsyncReadCallbackState);
+					socketEntry->ReadCallback(asyncSocketBuffer, bytesRead, socketEntry->ReadCallbackState);
 				}
 			}
 		}
 
-		SAL_Mutex_Release(asyncSocketMutex);
 		SAL_Thread_Sleep(25);
 	}
 
-	LinkedList_EndIterate(selectIterator);
+	AsyncLinkedList_EndIterate(selectIterator);
 
 	return 0;
 }
 
-static void AsyncWorker_Initialize() {
-	LinkedList_Initialize(&asyncSocketList, Memory_Free);
-	asyncSocketMutex = SAL_Mutex_Create();
+static void SAL_Socket_CallbackWorker_Initialize() {
+	AsyncLinkedList_Initialize(&asyncSocketList, Memory_Free);
 	asyncWorkerRunning = true;
-	asyncWorker = SAL_Thread_Create(AsyncWorker_Run, NULL);
+	asyncWorker = SAL_Thread_Create(SAL_Socket_CallbackWorker_Run, NULL);
 }
 
-static void AsyncWorker_Shutdown() {
+static void SAL_Socket_CallbackWorker_Shutdown() {
 	asyncWorkerRunning = false;
 	SAL_Thread_Join(asyncWorker);
-	SAL_Mutex_Free(asyncSocketMutex);
-	LinkedList_Uninitialize(&asyncSocketList);
+	AsyncLinkedList_Uninitialize(&asyncSocketList);
 }
 
 
@@ -187,8 +186,8 @@ SAL_Socket* SAL_Socket_ConnectIP(const uint32 ip, const uint16 port) {
 		return NULL;
 
 	server = Allocate(SAL_Socket);
-	server->AsyncReadCallback = NULL;
-	server->AsyncReadCallbackState = NULL;
+	server->ReadCallback = NULL;
+	server->ReadCallbackState = NULL;
 	server->Connected = true;
 	server->LastError = 0;
 	server->RawSocket = rawServer;
@@ -247,8 +246,8 @@ SAL_Socket* SAL_Socket_Listen(const int8* const port) {
 		return NULL;
 
 	listener = Allocate(SAL_Socket);
-	listener->AsyncReadCallback = NULL;
-	listener->AsyncReadCallbackState = NULL;
+	listener->ReadCallback = NULL;
+	listener->ReadCallbackState = NULL;
 	listener->Connected = true;
 	listener->LastError = 0;
 	listener->RawSocket = rawListener;
@@ -310,8 +309,8 @@ SAL_Socket* SAL_Socket_Accept(SAL_Socket* listener, uint32* const acceptedAddres
 		*acceptedAddress = remoteAddress.sin_addr.S_un.S_addr;
 
 		socket = Allocate(SAL_Socket);
-		socket->AsyncReadCallback = NULL;
-		socket->AsyncReadCallbackState = NULL;
+		socket->ReadCallback = NULL;
+		socket->ReadCallbackState = NULL;
 		socket->LastError = 0;
 		socket->RawSocket = rawSocket;
 		socket->Connected = true;
@@ -425,18 +424,15 @@ void SAL_Socket_SetReadCallback(SAL_Socket* socket, SAL_Socket_ReadCallback call
 	assert(callback != NULL);
 
 	if (!asyncWorkerRunning) {
-		AsyncWorker_Initialize();
+		SAL_Socket_CallbackWorker_Initialize();
 		asyncWorkerRunning = true;
 	}
 
-	if (!socket->AsyncReadCallback) {
-		SAL_Mutex_Acquire(asyncSocketMutex);
-		LinkedList_Append(&asyncSocketList, socket);
-		SAL_Mutex_Release(asyncSocketMutex);
-	}
+	if (!socket->ReadCallback)
+		AsyncLinkedList_Append(&asyncSocketList, socket);
 	
-	socket->AsyncReadCallback = callback;
-	socket->AsyncReadCallbackState = state;
+	socket->ReadCallback = callback;
+	socket->ReadCallbackState = state;
 }
 
 /**
@@ -445,20 +441,17 @@ void SAL_Socket_SetReadCallback(SAL_Socket* socket, SAL_Socket_ReadCallback call
  * @param socket The socket to clear all callbacks from
  */
 void SAL_Socket_UnsetSocketCallback(SAL_Socket* socket) {
-	if (socket->AsyncReadCallback) {
-		socket->AsyncReadCallback = NULL;
-		socket->AsyncReadCallbackState = NULL;
-
-		SAL_Mutex_Acquire(asyncSocketMutex);
-
-		LinkedList_Remove(&asyncSocketList, socket);
-	
-		if (asyncSocketList.Count == 0) {
-			SAL_Mutex_Release(asyncSocketMutex);
-			AsyncWorker_Shutdown();
-		}
-		else {
-			SAL_Mutex_Release(asyncSocketMutex);
-		}
+	if (socket->ReadCallback) {
+		socket->ReadCallback = NULL;
+		socket->ReadCallbackState = NULL;
+		
+		AsyncLinkedList_Remove(&asyncSocketList, socket);
 	}
+}
+
+/**
+ * Clears all the registered callbacks.
+ */
+void SAL_Socket_ClearCallbacks(void) {
+	SAL_Socket_CallbackWorker_Shutdown();
 }

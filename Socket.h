@@ -14,8 +14,8 @@ struct SAL_Socket {
 	#endif
 	boolean Connected;
 	uint8 LastError;
-	SAL_Socket_ReadCallback AsyncReadCallback;
-	void* AsyncReadCallbackState;
+	SAL_Socket_ReadCallback ReadCallback;
+	void* ReadCallbackState;
 };
 typedef struct SAL_Socket SAL_Socket;
 
@@ -28,5 +28,6 @@ public uint32 SAL_Socket_Read(SAL_Socket* socket, uint8* const buffer, const uin
 public boolean SAL_Socket_Write(SAL_Socket* socket, const uint8* const toWrite, const uint32 writeAmount);
 public void SAL_Socket_SetReadCallback(SAL_Socket* socket, SAL_Socket_ReadCallback callback, void* const state);
 public void SAL_Socket_UnsetSocketCallback(SAL_Socket* socket);
+public void SAL_Socket_ClearCallbacks(void);
 
 #endif
