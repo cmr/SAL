@@ -32,6 +32,7 @@
 	#include <string.h>
 #endif
 
+static void SAL_Socket_Initialize(SAL_Socket* socket);
 static void SAL_Socket_CallbackWorker_Initialize();
 static void SAL_Socket_CallbackWorker_Shutdown();
 static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run);
@@ -40,15 +41,6 @@ static uint8 asyncSocketBuffer[CALLBACK_BUFFER_SIZE];
 static AsyncLinkedList asyncSocketList;
 static SAL_Thread asyncWorker;
 static boolean asyncWorkerRunning = false;
-
-void SAL_Socket_Init(SAL_Socket* socket) {
-	socket->RawSocket = 0;
-	socket->Connected = false;
-	socket->LastError = 0;
-	socket->ReadCallback = NULL;
-	socket->ReadCallbackState = NULL;
-	return;
-}
 
 static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run) {
 #ifdef WINDOWS
@@ -109,6 +101,15 @@ static void SAL_Socket_CallbackWorker_Shutdown() {
 	AsyncLinkedList_Uninitialize(&asyncSocketList);
 }
 
+static void SAL_Socket_Initialize(SAL_Socket* socket) {
+	socket->RawSocket = 0;
+	socket->Connected = false;
+	socket->LastError = 0;
+	socket->ReadCallback = NULL;
+	socket->ReadCallbackState = NULL;
+	return;
+}
+
 
 /**
  * Create a TCP connection to a host.
@@ -165,7 +166,7 @@ SAL_Socket* SAL_Socket_Connect(const int8* const address, const uint16 port) {
 
 	freeaddrinfo(server);
 	sock = Allocate(SAL_Socket); // delay allocation until it's needed
-	SAL_Socket_Init(sock);
+	SAL_Socket_Initialize(sock);
 	sock->RawSocket = sock_fd;
 	sock->Connected = true;
 	return sock;
@@ -206,7 +207,7 @@ SAL_Socket* SAL_Socket_ConnectIP(const uint32 ip, const uint16 port) {
 		return NULL;
 
 	server = Allocate(SAL_Socket);
-	SAL_Socket_Init(server);
+	SAL_Socket_Initialize(server);
 	server->Connected = true;
 	server->RawSocket = rawServer;
 
@@ -299,7 +300,7 @@ SAL_Socket* SAL_Socket_Listen(const int8* const port) {
 	}
 	
 	sock = Allocate(SAL_Socket);
-	SAL_Socket_Init(sock);
+	SAL_Socket_Initialize(sock);
 	sock->RawSocket = sock_fd;
 	sock->Connected = true;
 	return sock;
@@ -332,7 +333,7 @@ SAL_Socket* SAL_Socket_Accept(SAL_Socket* listener, uint32* const acceptedAddres
 		*acceptedAddress = remoteAddress.sin_addr.S_un.S_addr;
 
 		socket = Allocate(SAL_Socket);
-		SAL_Socket_Init(socket);
+		SAL_Socket_Initialize(socket);
 		socket->RawSocket = rawSocket;
 		socket->Connected = true;
 		return socket;
@@ -349,7 +350,7 @@ SAL_Socket* SAL_Socket_Accept(SAL_Socket* listener, uint32* const acceptedAddres
 	}
 
 	sock = Allocate(SAL_Socket);
-	SAL_Socket_Init(sock);
+	SAL_Socket_Initialize(sock);
 	sock->RawSocket = sock_fd;
 	sock->Connected = true;
 	return sock;
@@ -413,25 +414,17 @@ uint32 SAL_Socket_Read(SAL_Socket* socket, uint8* const buffer, const uint32 buf
  */
 boolean SAL_Socket_Write(SAL_Socket* socket, const uint8* const toWrite, const uint32 writeAmount) {
 	int32 result;
+
 	assert(socket != NULL);
 	assert(toWrite != NULL);
+
 #ifdef WINDOWS
-	unsigned long mode;
-
-	mode = 1;
-	ioctlsocket((SOCKET)socket->RawSocket, FIONBIO, &mode);
-
 	result = send((SOCKET)socket->RawSocket, (const int8*)toWrite, writeAmount, 0);
-
-	mode = 0;
-	ioctlsocket((SOCKET)socket->RawSocket, FIONBIO, &mode);
-
-	return result != SOCKET_ERROR;
 #elif defined POSIX
 	result = send(socket->RawSocket, (const int8*)toWrite, writeAmount, 0);
-
-	return result != -1;
 #endif
+
+	return result;
 }
 
 /**

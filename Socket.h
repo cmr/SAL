@@ -19,7 +19,6 @@ struct SAL_Socket {
 };
 typedef struct SAL_Socket SAL_Socket;
 
-public void SAL_Socket_Init(SAL_Socket* socket);
 public SAL_Socket* SAL_Socket_Connect(const int8* const address, const uint16 port);
 public SAL_Socket* SAL_Socket_ConnectIP(const uint32 ip, const uint16 port);
 public SAL_Socket* SAL_Socket_Listen(const int8* const port);
