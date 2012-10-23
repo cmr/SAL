@@ -36,7 +36,7 @@ int64 SAL_Time_Now(void) {
 	int64 result;
 	struct timeval tv;
 
-	gettimeofday(&tv, null);
+	gettimeofday(&tv, NULL);
 
 	result = tv.tv_sec;
 	result *= 1000000; // convert seconds to microseconds
