@@ -29,6 +29,7 @@
 	#include <arpa/inet.h>
 	#include <netdb.h>
 	#include <stdio.h>
+	#include <string.h>
 #endif
 
 static void SAL_Socket_CallbackWorker_Initialize();
@@ -40,7 +41,17 @@ static AsyncLinkedList asyncSocketList;
 static SAL_Thread asyncWorker;
 static boolean asyncWorkerRunning = false;
 
+void SAL_Socket_Init(SAL_Socket* socket) {
+	socket->RawSocket = 0;
+	socket->Connected = false;
+	socket->LastError = 0;
+	socket->ReadCallback = NULL;
+	socket->ReadCallbackState = NULL;
+	return;
+}
+
 static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run) {
+#ifdef WINDOWS
 	fd_set readSet;
 	uint32 i;
 	uint32 bytesRead;
@@ -58,11 +69,7 @@ static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run) {
 
 		/* iterates over all sockets with registered callbacks. It either finishes when 1024 sockets have been added or the socket list is exhausted. If the socket list is greater than 1024, the position is remembered on the next loop   */
 		for (i = 0; i < FD_SETSIZE && AsyncLinkedList_IterateNext(socket, selectIterator, SAL_Socket*); i++) {
-			#ifdef WINDOWS
 				FD_SET((SOCKET)socket->RawSocket, &readSet);
-			#else defined POSIX
-
-			#endif
 		}
 
 		if (socket == NULL)
@@ -85,6 +92,9 @@ static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run) {
 	AsyncLinkedList_EndIterate(selectIterator);
 
 	return 0;
+#elif defined POSIX
+
+#endif
 }
 
 static void SAL_Socket_CallbackWorker_Initialize() {
@@ -132,9 +142,11 @@ SAL_Socket* SAL_Socket_Connect(const int8* const address, const uint16 port) {
 		return SAL_Socket_ConnectIP(hostAddress, port);
 	}
 #elif defined POSIX
-	SAL_Socket sock;
+	SAL_Socket *sock;
+	int sock_fd;
 	struct addrinfo *server, hints;
-	char *_port = AllocateArray(char, 6);
+	char _port[6];
+
 	snprintf(_port, 6, "%d", port);
 
 	memset(&hints, 0, sizeof hints);
@@ -142,17 +154,25 @@ SAL_Socket* SAL_Socket_Connect(const int8* const address, const uint16 port) {
 	hints.ai_socktype = SOCK_STREAM; // TCP
 
 	if (getaddrinfo(address, _port, &hints, &server) != 0) {
-		return 0;
+		goto error;
 	}
 
-	sock = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
+	sock_fd = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
 
-	if (connect(sock, server->ai_addr, server->ai_addrlen) == -1) {
-		sock = 0; // will catch socket() failure too
+	if (connect(sock_fd, server->ai_addr, server->ai_addrlen) == -1) {
+		goto error;
 	}
 
 	freeaddrinfo(server);
+	sock = Allocate(SAL_Socket); // delay allocation until it's needed
+	SAL_Socket_Init(sock);
+	sock->RawSocket = sock_fd;
+	sock->Connected = true;
 	return sock;
+
+error:
+	freeaddrinfo(server);
+	return NULL;
 #endif
 }
 
@@ -186,10 +206,8 @@ SAL_Socket* SAL_Socket_ConnectIP(const uint32 ip, const uint16 port) {
 		return NULL;
 
 	server = Allocate(SAL_Socket);
-	server->ReadCallback = NULL;
-	server->ReadCallbackState = NULL;
+	SAL_Socket_Init(server);
 	server->Connected = true;
-	server->LastError = 0;
 	server->RawSocket = rawServer;
 
 	return server;
@@ -254,7 +272,8 @@ SAL_Socket* SAL_Socket_Listen(const int8* const port) {
 
 	return listener;
 #elif defined POSIX
-	SAL_Socket sock;
+	SAL_Socket *sock;
+	int sock_fd;
 	struct addrinfo *server, hints;
 
 	memset(&hints, 0, sizeof hints);
@@ -263,28 +282,32 @@ SAL_Socket* SAL_Socket_Listen(const int8* const port) {
 	hints.ai_flags = AI_PASSIVE;
 
 	if (getaddrinfo(NULL, port, &hints, &server) != 0) {
-		return 0;
+		return NULL;
 	}
 
-	sock = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
-	if (sock == -1) {
+	sock_fd = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
+	if (sock_fd == -1) {
 		goto error;
 	}
 
-	if (bind(sock, server->ai_addr, server->ai_addrlen) != 0) {
-		goto error_after;
+	if (bind(sock_fd, server->ai_addr, server->ai_addrlen) != 0) {
+		goto error;
 	}
 
-	if (listen(sock, SOMAXCONN) != 0) {
-		goto error_after;
+	if (listen(sock_fd, SOMAXCONN) != 0) {
+		goto error;
 	}
-
+	
+	sock = Allocate(SAL_Socket);
+	SAL_Socket_Init(sock);
+	sock->RawSocket = sock_fd;
+	sock->Connected = true;
 	return sock;
-error_after:
-	close(sock);
+
 error:
+	close(sock); // It might be invalid, who cares?
 	freeaddrinfo(server);
-	return 0;
+	return NULL;
 #endif
 }
 
@@ -309,9 +332,7 @@ SAL_Socket* SAL_Socket_Accept(SAL_Socket* listener, uint32* const acceptedAddres
 		*acceptedAddress = remoteAddress.sin_addr.S_un.S_addr;
 
 		socket = Allocate(SAL_Socket);
-		socket->ReadCallback = NULL;
-		socket->ReadCallbackState = NULL;
-		socket->LastError = 0;
+		SAL_Socket_Init(socket);
 		socket->RawSocket = rawSocket;
 		socket->Connected = true;
 		return socket;
@@ -319,11 +340,18 @@ SAL_Socket* SAL_Socket_Accept(SAL_Socket* listener, uint32* const acceptedAddres
 
 	return NULL;
 #elif defined POSIX
-	SAL_Socket sock;
-	sock = accept(listener, NULL, NULL);
-	if (sock == -1) {
-		sock = 0;
+	SAL_Socket *sock;
+	int sock_fd;
+
+	sock_fd = accept(listener->RawSocket, NULL, NULL);
+	if (sock_fd == -1) {
+		return NULL;
 	}
+
+	sock = Allocate(SAL_Socket);
+	SAL_Socket_Init(sock);
+	sock->RawSocket = sock_fd;
+	sock->Connected = true;
 	return sock;
 #endif
 }
@@ -345,7 +373,7 @@ void SAL_Socket_Close(SAL_Socket* socket) {
 #elif defined POSIX
 	shutdown(socket->RawSocket, SHUT_RDWR);
 	close(socket->RawSocket);
-	socket->RawSocket = 0;
+	socket->RawSocket = -1;
 #endif
 }
 
@@ -358,20 +386,21 @@ void SAL_Socket_Close(SAL_Socket* socket) {
  * @returns Number of bytes read
  */
 uint32 SAL_Socket_Read(SAL_Socket* socket, uint8* const buffer, const uint32 bufferSize) {
-#ifdef WINDOWS
 	int32 received;
 
 	assert(buffer != NULL);
 	assert(socket != NULL);
 
+#ifdef WINDOWS
 	received = recv((SOCKET)socket->RawSocket, (int8* const)buffer, bufferSize, 0);
+#elif defined POSIX
+	received = recv(socket->RawSocket, (int8* const)buffer, bufferSize, 0);
+#endif
+
 	if (received <= 0)
 		return 0;
 
 	return (uint32)received;
-#elif defined POSIX
-
-#endif
 }
 
 /**
@@ -383,12 +412,11 @@ uint32 SAL_Socket_Read(SAL_Socket* socket, uint8* const buffer, const uint32 buf
  * @returns true if the call was successful, false if it failed.
  */
 boolean SAL_Socket_Write(SAL_Socket* socket, const uint8* const toWrite, const uint32 writeAmount) {
-#ifdef WINDOWS
-	unsigned long mode;
 	int32 result;
-
 	assert(socket != NULL);
 	assert(toWrite != NULL);
+#ifdef WINDOWS
+	unsigned long mode;
 
 	mode = 1;
 	ioctlsocket((SOCKET)socket->RawSocket, FIONBIO, &mode);
@@ -400,11 +428,6 @@ boolean SAL_Socket_Write(SAL_Socket* socket, const uint8* const toWrite, const u
 
 	return result != SOCKET_ERROR;
 #elif defined POSIX
-	int32 result;
-	
-	assert(socket != NULL);
-	assert(toWrite != NULL);
-
 	result = send(socket->RawSocket, (const int8*)toWrite, writeAmount, 0);
 
 	return result != -1;
@@ -422,6 +445,7 @@ boolean SAL_Socket_Write(SAL_Socket* socket, const uint8* const toWrite, const u
 void SAL_Socket_SetReadCallback(SAL_Socket* socket, SAL_Socket_ReadCallback callback, void* const state) {
 	assert(socket != NULL);
 	assert(callback != NULL);
+	assert(state != NULL);
 
 	if (!asyncWorkerRunning) {
 		SAL_Socket_CallbackWorker_Initialize();
@@ -441,6 +465,8 @@ void SAL_Socket_SetReadCallback(SAL_Socket* socket, SAL_Socket_ReadCallback call
  * @param socket The socket to clear all callbacks from
  */
 void SAL_Socket_UnsetSocketCallback(SAL_Socket* socket) {
+	assert(socket != NULL);
+
 	if (socket->ReadCallback) {
 		socket->ReadCallback = NULL;
 		socket->ReadCallbackState = NULL;
