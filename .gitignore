@@ -1,6 +1,9 @@
 Binaries/*
 Build/*
 
+tags
+types_c.taghl
+
 *.sln
 *.vcxproj
 *.suo
