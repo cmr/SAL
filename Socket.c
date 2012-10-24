@@ -11,8 +11,6 @@
 #include <Utilities/Memory.h>
 #include "Thread.h"
 
-#define CALLBACK_BUFFER_SIZE 1024
-
 #ifdef WINDOWS
 	#define WIN32_LEAN_AND_MEAN
 	#define FD_SETSIZE 1024
@@ -37,7 +35,6 @@ static void SAL_Socket_CallbackWorker_Initialize();
 static void SAL_Socket_CallbackWorker_Shutdown();
 static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run);
 
-static uint8 asyncSocketBuffer[CALLBACK_BUFFER_SIZE];
 static AsyncLinkedList asyncSocketList;
 static SAL_Thread asyncWorker;
 static boolean asyncWorkerRunning = false;
@@ -46,9 +43,7 @@ static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run) {
 #ifdef WINDOWS
 	fd_set readSet;
 	uint32 i;
-	uint32 bytesRead;
-	SAL_Socket* socketEntry;
-	SAL_Socket* socket;
+	SAL_Socket* asyncSocket;
 	AsyncLinkedList_Iterator* selectIterator;
 	struct timeval selectTimeout;
 
@@ -60,20 +55,23 @@ static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run) {
 		FD_ZERO(&readSet);
 
 		/* iterates over all sockets with registered callbacks. It either finishes when 1024 sockets have been added or the socket list is exhausted. If the socket list is greater than 1024, the position is remembered on the next loop   */
-		for (i = 0; i < FD_SETSIZE && AsyncLinkedList_IterateNext(socket, selectIterator, SAL_Socket*); i++) {
-				FD_SET((SOCKET)socket->RawSocket, &readSet);
+		for (i = 0; i < FD_SETSIZE && AsyncLinkedList_IterateNext(asyncSocket, selectIterator, SAL_Socket*); i++) {
+			#ifdef WINDOWS
+				FD_SET((SOCKET)asyncSocket->RawSocket, &readSet);
+			#else defined POSIX
+
+			#endif
 		}
 
-		if (socket == NULL)
+		if (asyncSocket == NULL)
 			AsyncLinkedList_ResetIterator(selectIterator);
 
 		select(0, &readSet, NULL, NULL, &selectTimeout);
 
 		for (i = 0; i < readSet.fd_count; i++) {
-			AsyncLinkedList_ForEach(socketEntry, &asyncSocketList, SAL_Socket*) {
-				if (socketEntry->RawSocket == readSet.fd_array[i]) {
-					bytesRead = SAL_Socket_Read(socketEntry, asyncSocketBuffer, CALLBACK_BUFFER_SIZE);
-					socketEntry->ReadCallback(asyncSocketBuffer, bytesRead, socketEntry->ReadCallbackState);
+			AsyncLinkedList_ForEach(asyncSocket, &asyncSocketList, SAL_Socket*) {
+				if (asyncSocket->RawSocket == readSet.fd_array[i]) {
+					asyncSocket->ReadCallback(asyncSocket, asyncSocket->ReadCallbackState);
 				}
 			}
 		}
@@ -122,7 +120,6 @@ SAL_Socket* SAL_Socket_Connect(const int8* const address, const int8* port) {
 	SAL_Socket *sock;
 	SOCKET sock_fd;
 	struct addrinfo *server, hints;
-	int error;
 
 	if (!winsockInitialized) {
 		WSADATA startupData;
@@ -134,14 +131,13 @@ SAL_Socket* SAL_Socket_Connect(const int8* const address, const int8* port) {
 	hints.ai_family = AF_UNSPEC; // IPvWhatever
 	hints.ai_socktype = SOCK_STREAM; // TCP
 	
-	if ( (error = getaddrinfo(address, port, &hints, &server)) != 0) {
+	if (getaddrinfo(address, port, &hints, &server) != 0) {
 		return NULL;
 	}
 
 	sock_fd = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
 
-	if ( (error = connect(sock_fd, server->ai_addr, (int)server->ai_addrlen)) == -1) {
-		error = WSAGetLastError();
+	if (connect(sock_fd, server->ai_addr, (int)server->ai_addrlen) == -1) {
 		freeaddrinfo(server);
 		return NULL;
 	}
@@ -192,7 +188,6 @@ SAL_Socket* SAL_Socket_Listen(const int8* const port) {
 #ifdef WINDOWS
 	SAL_Socket* sock;
 	SOCKET sock_fd;
-	int32 errorCode;
 	struct addrinfo *server, hints;
 
 	if (!winsockInitialized) {
@@ -215,7 +210,7 @@ SAL_Socket* SAL_Socket_Listen(const int8* const port) {
 		goto error;
 	}
 
-	if (bind(sock_fd, server->ai_addr, server->ai_addrlen) != 0) {
+	if (bind(sock_fd, server->ai_addr, (int)server->ai_addrlen) != 0) {
 		goto error;
 	}
 

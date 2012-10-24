@@ -4,7 +4,10 @@
 #include "Common.h"
 #include <Utilities/Strings.h>
 
-typedef void (*SAL_Socket_ReadCallback)(const uint8* const buffer, const uint32 length, void* const state);
+/* forward declaration */
+typedef struct SAL_Socket SAL_Socket;
+
+typedef void (*SAL_Socket_ReadCallback)(SAL_Socket* socket, void* const state);
 
 struct SAL_Socket {
 	#ifdef WINDOWS
@@ -17,7 +20,6 @@ struct SAL_Socket {
 	SAL_Socket_ReadCallback ReadCallback;
 	void* ReadCallbackState;
 };
-typedef struct SAL_Socket SAL_Socket;
 
 public SAL_Socket* SAL_Socket_Connect(const int8* const address, const int8* port);
 public SAL_Socket* SAL_Socket_Listen(const int8* const port);
