@@ -19,8 +19,7 @@ struct SAL_Socket {
 };
 typedef struct SAL_Socket SAL_Socket;
 
-public SAL_Socket* SAL_Socket_Connect(const int8* const address, const uint16 port);
-public SAL_Socket* SAL_Socket_ConnectIP(const uint32 ip, const uint16 port);
+public SAL_Socket* SAL_Socket_Connect(const int8* const address, const int8* port);
 public SAL_Socket* SAL_Socket_Listen(const int8* const port);
 public SAL_Socket* SAL_Socket_Accept(SAL_Socket* listener, uint32* const acceptedAddress);
 public void SAL_Socket_Close(SAL_Socket* socket);

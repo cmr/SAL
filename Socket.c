@@ -117,12 +117,12 @@ static void SAL_Socket_Initialize(SAL_Socket* socket) {
  * @param address A string specifying the hostname to connect to
  * @param port Port to connect to
  */
-SAL_Socket* SAL_Socket_Connect(const int8* const address, const uint16 port) {
+SAL_Socket* SAL_Socket_Connect(const int8* const address, const int8* port) {
 #ifdef WINDOWS
-	unsigned long hostAddress;
-	HOSTENT* hostEntry;
-	uint8 i;
-	SAL_Socket* socket;
+	SAL_Socket *sock;
+	SOCKET sock_fd;
+	struct addrinfo *server, hints;
+	int error;
 
 	if (!winsockInitialized) {
 		WSADATA startupData;
@@ -130,38 +130,47 @@ SAL_Socket* SAL_Socket_Connect(const int8* const address, const uint16 port) {
 		winsockInitialized = true;
 	}
 
-	hostAddress = inet_addr(address);
-	if (hostAddress == INADDR_NONE) {
-		hostEntry = gethostbyname(address);
-		for (i = 0, socket = NULL; i < hostEntry->h_length; i++)
-			if (socket = SAL_Socket_ConnectIP((uint32)hostEntry->h_addr_list[i], port))
-				return socket;
-
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC; // IPvWhatever
+	hints.ai_socktype = SOCK_STREAM; // TCP
+	
+	if ( (error = getaddrinfo(address, port, &hints, &server)) != 0) {
 		return NULL;
 	}
-	else {
-		return SAL_Socket_ConnectIP(hostAddress, port);
+
+	sock_fd = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
+
+	if ( (error = connect(sock_fd, server->ai_addr, (int)server->ai_addrlen)) == -1) {
+		error = WSAGetLastError();
+		freeaddrinfo(server);
+		return NULL;
 	}
+
+	freeaddrinfo(server);
+	sock = Allocate(SAL_Socket); // delay allocation until it's needed
+	SAL_Socket_Initialize(sock);
+	sock->RawSocket = sock_fd;
+	sock->Connected = true;
+
+	return sock;
 #elif defined POSIX
 	SAL_Socket *sock;
 	int sock_fd;
 	struct addrinfo *server, hints;
-	char _port[6];
-
-	snprintf(_port, 6, "%d", port);
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC; // IPvWhatever
 	hints.ai_socktype = SOCK_STREAM; // TCP
 
-	if (getaddrinfo(address, _port, &hints, &server) != 0) {
-		goto error;
+	if (getaddrinfo(address, port, &hints, &server) != 0) {
+		return NULL;
 	}
 
 	sock_fd = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
 
 	if (connect(sock_fd, server->ai_addr, server->ai_addrlen) == -1) {
-		goto error;
+		freeaddrinfo(server);
+		return NULL;
 	}
 
 	freeaddrinfo(server);
@@ -170,50 +179,6 @@ SAL_Socket* SAL_Socket_Connect(const int8* const address, const uint16 port) {
 	sock->RawSocket = sock_fd;
 	sock->Connected = true;
 	return sock;
-
-error:
-	freeaddrinfo(server);
-	return NULL;
-#endif
-}
-
-/**
- * Create a TCP connection to a host.
- *
- * @param ip IPv4 Address of the remote host
- * @param port Port to connect to
- */
-SAL_Socket* SAL_Socket_ConnectIP(const uint32 ip, const uint16 port) {
-#ifdef WINDOWS
-	SAL_Socket* server;
-	SOCKET rawServer;
-	SOCKADDR_IN serverAddress;
-
-	if (!winsockInitialized) {
-		WSADATA startupData;
-		WSAStartup(514, &startupData);
-		winsockInitialized = true;
-	}
-
-	rawServer = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (rawServer == INVALID_SOCKET)
-		return NULL;
-
-	serverAddress.sin_family = AF_INET;
-	serverAddress.sin_addr.S_un.S_addr = (unsigned long)ip;
-	serverAddress.sin_port = htons(port);
-
-	if (connect(rawServer, (SOCKADDR*)&serverAddress, sizeof(serverAddress)) == SOCKET_ERROR)
-		return NULL;
-
-	server = Allocate(SAL_Socket);
-	SAL_Socket_Initialize(server);
-	server->Connected = true;
-	server->RawSocket = rawServer;
-
-	return server;
-#elif defined POSIX
-
 #endif
 }
 
@@ -225,53 +190,49 @@ SAL_Socket* SAL_Socket_ConnectIP(const uint32 ip, const uint16 port) {
  */
 SAL_Socket* SAL_Socket_Listen(const int8* const port) {
 #ifdef WINDOWS
-	SAL_Socket* listener;
-	ADDRINFO* addressInfo;
-	ADDRINFO hints;
-	SOCKET rawListener;
+	SAL_Socket* sock;
+	SOCKET sock_fd;
 	int32 errorCode;
+	struct addrinfo *server, hints;
 
 	if (!winsockInitialized) {
 		WSADATA startupData;
 		WSAStartup(514, &startupData);
 		winsockInitialized = true;
 	}
-	
-	rawListener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (rawListener == INVALID_SOCKET)
-		return NULL;
-	
-	ZeroMemory(&hints, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
+
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC; // IPvWhatever
+	hints.ai_socktype = SOCK_STREAM; // TCP
 	hints.ai_flags = AI_PASSIVE;
 
-	errorCode = getaddrinfo(NULL, port, &hints, &addressInfo);
-	if (errorCode != 0)
-		return NULL;
-
-	errorCode = bind(rawListener, addressInfo->ai_addr, (int32)addressInfo->ai_addrlen);
-	if (errorCode != 0) {
-		freeaddrinfo(addressInfo);
-		closesocket(rawListener);
+	if (getaddrinfo(NULL, port, &hints, &server) != 0) {
 		return NULL;
 	}
 
-	freeaddrinfo(addressInfo);
+	sock_fd = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
+	if (sock_fd == -1) {
+		goto error;
+	}
 
-	errorCode = listen(rawListener, SOMAXCONN);
-	if (errorCode != 0)
-		return NULL;
+	if (bind(sock_fd, server->ai_addr, server->ai_addrlen) != 0) {
+		goto error;
+	}
 
-	listener = Allocate(SAL_Socket);
-	listener->ReadCallback = NULL;
-	listener->ReadCallbackState = NULL;
-	listener->Connected = true;
-	listener->LastError = 0;
-	listener->RawSocket = rawListener;
+	if (listen(sock_fd, SOMAXCONN) != 0) {
+		goto error;
+	}
+	
+	sock = Allocate(SAL_Socket);
+	SAL_Socket_Initialize(sock);
+	sock->RawSocket = sock_fd;
+	sock->Connected = true;
+	return sock;
 
-	return listener;
+error:
+	closesocket(sock_fd); // It might be invalid, who cares?
+	freeaddrinfo(server);
+	return NULL;
 #elif defined POSIX
 	SAL_Socket *sock;
 	int sock_fd;
@@ -306,7 +267,7 @@ SAL_Socket* SAL_Socket_Listen(const int8* const port) {
 	return sock;
 
 error:
-	close(sock); // It might be invalid, who cares?
+	close(sock_fd); // It might be invalid, who cares?
 	freeaddrinfo(server);
 	return NULL;
 #endif
