@@ -192,7 +192,7 @@ SAL_Socket* SAL_Socket_Connect(const int8* const address, const int8* port, uint
 	SAL_Socket* server;
 	struct addrinfo* serverAddrInfo;
 	
-	server = SAL_Socket_PrepareRawSocket(NULL, port, family, type, false, &serverAddrInfo);
+	server = SAL_Socket_PrepareRawSocket(address, port, family, type, false, &serverAddrInfo);
 	if (server == NULL) {
 		return NULL;
 	}
