@@ -31,7 +31,7 @@
 #endif
 
 static void SAL_Socket_Initialize(SAL_Socket* socket);
-static struct addrinfo* SAL_Socket_SetHints(const int8* const address, const int8* port, uint8 family, uint8 type, boolean willListenOn);
+static SAL_Socket* SAL_Socket_PrepareRawSocket(const int8* const address, const int8* port, uint8 family, uint8 type, boolean willListenOn, struct addrinfo** addressInfo);
 static void SAL_Socket_CallbackWorker_Initialize();
 static void SAL_Socket_CallbackWorker_Shutdown();
 static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run);
@@ -115,9 +115,22 @@ static SAL_Socket* SAL_Socket_New(uint8 family, uint8 type) {
 	return socket;
 }
 
-static struct addrinfo* SAL_Socket_SetHints(const int8* const address, const int8* port, uint8 family, uint8 type, boolean willListenOn) {
+static SAL_Socket* SAL_Socket_PrepareRawSocket(const int8* const address, const int8* port, uint8 family, uint8 type, boolean willListenOn, struct addrinfo** addressInfo) {
 	struct addrinfo serverHints;
 	struct addrinfo* serverAddrInfo;
+	SAL_Socket* listener;
+
+#ifdef WINDOWS
+	SOCKET rawSocket;
+
+	if (!winsockInitialized) {
+		WSADATA startupData;
+		WSAStartup(514, &startupData);
+		winsockInitialized = true;
+	}
+#elif defined POSIX
+	int rawSocket;
+#endif
 
 	memset(&serverHints, 0, sizeof(struct addrinfo));
 
@@ -140,7 +153,30 @@ static struct addrinfo* SAL_Socket_SetHints(const int8* const address, const int
 		return NULL;
 	}
 
-	return serverAddrInfo;
+	if (serverAddrInfo == NULL) {
+		return NULL;
+	}
+	
+	rawSocket = socket(serverAddrInfo->ai_family, serverAddrInfo->ai_socktype, serverAddrInfo->ai_protocol);
+#ifdef WINDOWS
+	if (rawSocket == INVALID_SOCKET) {
+		closesocket(rawSocket); // It might be invalid, who cares?
+		freeaddrinfo(serverAddrInfo);
+		return NULL;
+	}
+#elif defined POSIX
+	if (rawSocket == -1) {
+		close(rawSocket);
+		freeaddrinfo(serverAddrInfo);
+		return NULL;
+	}
+#endif
+
+	listener = SAL_Socket_New(family, type);
+	listener->RawSocket = rawSocket;
+	*addressInfo = serverAddrInfo;
+
+	return listener;
 }
 
 
@@ -155,47 +191,29 @@ static struct addrinfo* SAL_Socket_SetHints(const int8* const address, const int
 SAL_Socket* SAL_Socket_Connect(const int8* const address, const int8* port, uint8 family, uint8 type) {
 	SAL_Socket* server;
 	struct addrinfo* serverAddrInfo;
-
-#ifdef WINDOWS
-	SOCKET rawSocket;
-
-	if (!winsockInitialized) {
-		WSADATA startupData;
-		WSAStartup(514, &startupData);
-		winsockInitialized = true;
-	}
-#elif defined POSIX
-	int rawSocket;
-#endif
 	
-	serverAddrInfo = SAL_Socket_SetHints(address, port, family, type, false);
-	if (serverAddrInfo == NULL) {
+	server = SAL_Socket_PrepareRawSocket(NULL, port, family, type, false, &serverAddrInfo);
+	if (server == NULL) {
 		return NULL;
 	}
-
-	rawSocket = socket(serverAddrInfo->ai_family, serverAddrInfo->ai_socktype, serverAddrInfo->ai_protocol);
-	if (rawSocket == -1) {
+	if (connect(server->RawSocket, serverAddrInfo->ai_addr, (int)serverAddrInfo->ai_addrlen) != 0) {
 		goto error;
 	}
-
-	if (connect(rawSocket, serverAddrInfo->ai_addr, (int)serverAddrInfo->ai_addrlen) == -1) {
-		goto error;
-	}
-
+	
 	freeaddrinfo(serverAddrInfo);
-	server = SAL_Socket_New(family, type);
-	server->RawSocket = rawSocket;
+
 	server->Connected = true;
 
 	return server;
 
 error:
 #ifdef WINDOWS
-	closesocket(rawSocket); // It might be invalid, who cares?
+	closesocket(server->RawSocket); // It might be invalid, who cares?
 #elif defined POSIX
-	close(rawSocket);
+	close(server->RawSocket);
 #endif
 	freeaddrinfo(serverAddrInfo);
+	Free(server);
 
 	return NULL;
 }
@@ -210,50 +228,33 @@ SAL_Socket* SAL_Socket_Listen(const int8* const port, uint8 family, uint8 type) 
 	SAL_Socket* listener;
 	struct addrinfo* serverAddrInfo;
 
-#ifdef WINDOWS
-	SOCKET rawSocket;
-
-	if (!winsockInitialized) {
-		WSADATA startupData;
-		WSAStartup(514, &startupData);
-		winsockInitialized = true;
-	}
-#elif defined POSIX
-	int rawSocket;
-#endif
-
-	serverAddrInfo = SAL_Socket_SetHints(NULL, port, family, type, false);
-	if (serverAddrInfo == NULL) {
+	listener = SAL_Socket_PrepareRawSocket(NULL, port, family, type, false, &serverAddrInfo);
+	if (listener == NULL) {
 		return NULL;
 	}
-	/* ATTENTION CMR: i'd like to move the call above and below here and in Connect() into SetHints and make it return an allocated SAL_Socket() if successful, setting error if it fails. It'd also accept a struct addrinfo to return the addresses for bind and connect */
-	rawSocket = socket(serverAddrInfo->ai_family, serverAddrInfo->ai_socktype, serverAddrInfo->ai_protocol);
-	if (rawSocket == -1) {
+
+	if (bind(listener->RawSocket, serverAddrInfo->ai_addr, (int)serverAddrInfo->ai_addrlen) != 0) {
 		goto error;
 	}
 
-	if (bind(rawSocket, serverAddrInfo->ai_addr, (int)serverAddrInfo->ai_addrlen) != 0) {
-		goto error;
-	}
-
-	if (listen(rawSocket, SOMAXCONN) != 0) {
+	if (listen(listener->RawSocket, SOMAXCONN) != 0) {
 		goto error;
 	}
 	
 	freeaddrinfo(serverAddrInfo);
-	listener = SAL_Socket_New(family, type);
-	listener->RawSocket = rawSocket;
+
 	listener->Connected = true;
 
 	return listener;
 
 error:
 #ifdef WINDOWS
-	closesocket(rawSocket); // It might be invalid, who cares?
+	closesocket(listener->RawSocket); // It might be invalid, who cares?
 #elif defined POSIX
-	close(rawSocket);
+	close(listener->RawSocket);
 #endif
 	freeaddrinfo(serverAddrInfo);
+	Free(listener);
 
 	return NULL;
 }
