@@ -99,13 +99,17 @@ static void SAL_Socket_CallbackWorker_Shutdown() {
 	AsyncLinkedList_Uninitialize(&asyncSocketList);
 }
 
-static void SAL_Socket_Initialize(SAL_Socket* socket) {
+static SAL_Socket* SAL_Socket_New() {
+	SAL_Socket* socket;
+	
+	socket = Allocate(SAL_Socket);
 	socket->RawSocket = 0;
 	socket->Connected = false;
 	socket->LastError = 0;
 	socket->ReadCallback = NULL;
 	socket->ReadCallbackState = NULL;
-	return;
+
+	return socket;
 }
 
 
@@ -143,8 +147,7 @@ SAL_Socket* SAL_Socket_Connect(const int8* const address, const int8* port) {
 	}
 
 	freeaddrinfo(server);
-	sock = Allocate(SAL_Socket); // delay allocation until it's needed
-	SAL_Socket_Initialize(sock);
+	sock = SAL_Socket_New();
 	sock->RawSocket = sock_fd;
 	sock->Connected = true;
 
@@ -170,8 +173,7 @@ SAL_Socket* SAL_Socket_Connect(const int8* const address, const int8* port) {
 	}
 
 	freeaddrinfo(server);
-	sock = Allocate(SAL_Socket); // delay allocation until it's needed
-	SAL_Socket_Initialize(sock);
+	sock = SAL_Socket_New();
 	sock->RawSocket = sock_fd;
 	sock->Connected = true;
 	return sock;
@@ -218,8 +220,7 @@ SAL_Socket* SAL_Socket_Listen(const int8* const port) {
 		goto error;
 	}
 	
-	sock = Allocate(SAL_Socket);
-	SAL_Socket_Initialize(sock);
+	sock = SAL_Socket_New();
 	sock->RawSocket = sock_fd;
 	sock->Connected = true;
 	return sock;
@@ -255,8 +256,7 @@ error:
 		goto error;
 	}
 	
-	sock = Allocate(SAL_Socket);
-	SAL_Socket_Initialize(sock);
+	sock = SAL_Socket_New();
 	sock->RawSocket = sock_fd;
 	sock->Connected = true;
 	return sock;
@@ -287,9 +287,8 @@ SAL_Socket* SAL_Socket_Accept(SAL_Socket* listener, uint32* const acceptedAddres
 	rawSocket = accept((SOCKET)listener->RawSocket, (SOCKADDR*)&remoteAddress, &addressLength);
 	if (rawSocket != INVALID_SOCKET) {
 		*acceptedAddress = remoteAddress.sin_addr.S_un.S_addr;
-
-		socket = Allocate(SAL_Socket);
-		SAL_Socket_Initialize(socket);
+		
+		socket = SAL_Socket_New();
 		socket->RawSocket = rawSocket;
 		socket->Connected = true;
 		return socket;
@@ -304,9 +303,8 @@ SAL_Socket* SAL_Socket_Accept(SAL_Socket* listener, uint32* const acceptedAddres
 	if (sock_fd == -1) {
 		return NULL;
 	}
-
-	sock = Allocate(SAL_Socket);
-	SAL_Socket_Initialize(sock);
+	
+	sock = SAL_Socket_New();
 	sock->RawSocket = sock_fd;
 	sock->Connected = true;
 	return sock;
