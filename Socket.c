@@ -45,10 +45,10 @@ static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run) {
 	fd_set readSet;
 	uint32 i;
 	SAL_Socket* asyncSocket;
-	AsyncLinkedList_Iterator* selectIterator;
+	AsyncLinkedList_Iterator selectIterator;
 	struct timeval selectTimeout;
 
-	selectIterator = AsyncLinkedList_BeginIterate(&asyncSocketList);
+	AsyncLinkedList_InitializeIterator(&selectIterator, &asyncSocketList);
 	selectTimeout.tv_usec = 250;
 	selectTimeout.tv_sec = 0;
 
@@ -56,16 +56,16 @@ static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run) {
 		FD_ZERO(&readSet);
 
 		/* iterates over all sockets with registered callbacks. It either finishes when 1024 sockets have been added or the socket list is exhausted. If the socket list is greater than 1024, the position is remembered on the next loop   */
-		for (i = 0; i < FD_SETSIZE && AsyncLinkedList_IterateNext(asyncSocket, selectIterator, SAL_Socket*); i++) {
+		for (i = 0, asyncSocket = (SAL_Socket*)AsyncLinkedList_Iterate(&selectIterator); i < FD_SETSIZE && asyncSocket != NULL; i++, asyncSocket = (SAL_Socket*)AsyncLinkedList_Iterate(&selectIterator)) {
 			#ifdef WINDOWS
 				FD_SET((SOCKET)asyncSocket->RawSocket, &readSet);
 			#else defined POSIX
 
 			#endif
 		}
-
-		if (asyncSocket == NULL) /* AsyncLinkedList_IterateNext returns NULL when the list is empty. we need to reset it then. */
-			AsyncLinkedList_ResetIterator(selectIterator);
+		
+		if (asyncSocket == NULL) /* AsyncLinkedList_Iterate returns NULL when the list is empty. we need to reset it then. */
+			AsyncLinkedList_ResetIterator(&selectIterator);
 
 		select(0, &readSet, NULL, NULL, &selectTimeout);
 
@@ -79,8 +79,6 @@ static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run) {
 
 		SAL_Thread_Sleep(25);
 	}
-
-	AsyncLinkedList_EndIterate(selectIterator);
 
 	return 0;
 #elif defined POSIX
