@@ -79,6 +79,8 @@ static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run) {
 
 		SAL_Thread_Sleep(25);
 	}
+	
+	AsyncLinkedList_Uninitialize(&asyncSocketList);
 
 	return 0;
 #elif defined POSIX
@@ -87,14 +89,13 @@ static SAL_Thread_Start(SAL_Socket_CallbackWorker_Run) {
 }
 
 static void SAL_Socket_CallbackWorker_Initialize() {
-	AsyncLinkedList_Initialize(&asyncSocketList, Memory_Free);
+	AsyncLinkedList_Initialize(&asyncSocketList, NULL);
 	asyncWorkerRunning = true;
 	asyncWorker = SAL_Thread_Create(SAL_Socket_CallbackWorker_Run, NULL);
 }
 
 static void SAL_Socket_CallbackWorker_Shutdown() {
 	asyncWorkerRunning = false;
-	AsyncLinkedList_Uninitialize(&asyncSocketList);
 }
 
 static SAL_Socket* SAL_Socket_New(uint8 family, uint8 type) {
@@ -313,6 +314,7 @@ void SAL_Socket_Close(SAL_Socket* socket) {
 	close(socket->RawSocket);
 	socket->RawSocket = -1;
 #endif
+	Free(socket);
 }
 
 /**
