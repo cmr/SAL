@@ -367,24 +367,28 @@ uint32 SAL_Socket_Write(SAL_Socket* socket, const uint8* const toWrite, const ui
 }
 
 /**
- * Send @a writeAmount bytes from @a toWrite over @a socket trying @a tries times to send the data before giving up.
+ * Send @a writeAmount bytes from @a toWrite over @a socket trying @a maxAttempts times to send the data before giving up.
  *
  * @param socket Socket to write to
  * @param toWrite Buffer to write from
  * @param writeAmount Number of bytes to write
- * @param tries Number of times to try and send all the data
+ * @param maxAttempts Number of times to try and send all the data
  * @returns the number of bytes that were sent.
  */
-uint32 SAL_Socket_EnsureWrite(SAL_Socket* socket, const uint8* const toWrite, const uint32 writeAmount, uint8 tries) {
+uint32 SAL_Socket_EnsureWrite(SAL_Socket* socket, const uint8* const toWrite, const uint32 writeAmount, uint8 maxAttempts) {
 	uint32 sentSoFar;
 	int32 result;
-	
+	uint8 tries;
+	boolean isFirstTry;
+
 	assert(socket != NULL);
 	assert(toWrite != NULL);
 
 	sentSoFar = 0;
+	tries = 0;
+	isFirstTry = true;
 
-	while (sentSoFar < writeAmount && tries > 0) {
+	while (true) {
 	
 		#ifdef WINDOWS
 			result = send((SOCKET)socket->RawSocket, (const int8*)(toWrite + sentSoFar), writeAmount - sentSoFar, 0);
@@ -396,7 +400,12 @@ uint32 SAL_Socket_EnsureWrite(SAL_Socket* socket, const uint8* const toWrite, co
 				sentSoFar += result;
 		#endif
 
-		tries--;
+		tries++;
+
+		if (sentSoFar == writeAmount || tries == maxAttempts)
+			break;
+
+		SAL_Thread_Sleep(tries * 50);
 	}
 
 
