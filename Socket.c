@@ -403,12 +403,8 @@ void SAL_Socket_UnsetSocketCallback(SAL_Socket* socket) {
 		socket->ReadCallbackState = NULL;
 		
 		AsyncLinkedList_Remove(&asyncSocketList, socket);
-	}
-}
 
-/**
- * Clears all the registered callbacks.
- */
-void SAL_Socket_ClearCallbacks(void) {
-	SAL_Socket_CallbackWorker_Shutdown();
+		if (AsyncLinkedList_GetCount(&asyncSocketList) == 0)
+			SAL_Socket_CallbackWorker_Shutdown();
+	}
 }
