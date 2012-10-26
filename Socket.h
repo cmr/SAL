@@ -14,6 +14,8 @@ typedef void (*SAL_Socket_ReadCallback)(SAL_Socket* socket, void* const state);
 
 #define SAL_Socket_Types_TCP 0 /* should probably add UDP eventually */
 
+#define SAL_Socket_AddressLength 16
+
 struct SAL_Socket {
 	#ifdef WINDOWS
 		uint64 RawSocket;
@@ -24,7 +26,7 @@ struct SAL_Socket {
 	uint8 Family;
 	boolean Connected;
 	uint8 LastError;
-	uint8* RemoteEndpointAddress;
+	uint8 RemoteEndpointAddress[SAL_Socket_AddressLength];
 	SAL_Socket_ReadCallback ReadCallback;
 	void* ReadCallbackState;
 };

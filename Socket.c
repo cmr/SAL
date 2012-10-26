@@ -94,7 +94,6 @@ static void SAL_Socket_CallbackWorker_Initialize() {
 
 static void SAL_Socket_CallbackWorker_Shutdown() {
 	asyncWorkerRunning = false;
-	SAL_Thread_Join(asyncWorker);
 	AsyncLinkedList_Uninitialize(&asyncSocketList);
 }
 
