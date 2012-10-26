@@ -407,3 +407,11 @@ void SAL_Socket_UnsetSocketCallback(SAL_Socket* socket) {
 			SAL_Socket_CallbackWorker_Shutdown();
 	}
 }
+
+uint16 SAL_Socket_HostToNetworkShort(uint16 value) {
+	return htons(value);
+}
+
+uint16 SAL_Socket_NetworkToHostShort(uint16 value) {
+	return ntohs(value);
+}

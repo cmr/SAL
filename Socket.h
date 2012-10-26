@@ -39,5 +39,7 @@ public uint32 SAL_Socket_Read(SAL_Socket* socket, uint8* const buffer, const uin
 public uint32 SAL_Socket_Write(SAL_Socket* socket, const uint8* const toWrite, const uint32 writeAmount);
 public void SAL_Socket_SetReadCallback(SAL_Socket* socket, SAL_Socket_ReadCallback callback, void* const state);
 public void SAL_Socket_UnsetSocketCallback(SAL_Socket* socket);
+public uint16 SAL_Socket_HostToNetworkShort(uint16 value);
+public uint16 SAL_Socket_NetworkToHostShort(uint16 value);
 
 #endif
