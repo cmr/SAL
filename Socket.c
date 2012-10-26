@@ -367,6 +367,43 @@ uint32 SAL_Socket_Write(SAL_Socket* socket, const uint8* const toWrite, const ui
 }
 
 /**
+ * Send @a writeAmount bytes from @a toWrite over @a socket trying @a tries times to send the data before giving up.
+ *
+ * @param socket Socket to write to
+ * @param toWrite Buffer to write from
+ * @param writeAmount Number of bytes to write
+ * @param tries Number of times to try and send all the data
+ * @returns the number of bytes that were sent.
+ */
+uint32 SAL_Socket_EnsureWrite(SAL_Socket* socket, const uint8* const toWrite, const uint32 writeAmount, uint8 tries) {
+	uint32 sentSoFar;
+	int32 result;
+	
+	assert(socket != NULL);
+	assert(toWrite != NULL);
+
+	sentSoFar = 0;
+
+	while (sentSoFar < writeAmount && tries > 0) {
+	
+		#ifdef WINDOWS
+			result = send((SOCKET)socket->RawSocket, (const int8*)(toWrite + sentSoFar), writeAmount - sentSoFar, 0);
+			if (result != SOCKET_ERROR)
+				sentSoFar += result;
+		#elif defined POSIX
+			result = send(socket->RawSocket, (const int8*)(toWrite + sentSoFar), writeAmount - sentSoFar, 0);
+			if (result != -1)
+				sentSoFar += result;
+		#endif
+
+		tries--;
+	}
+
+
+	return sentSoFar;
+}
+
+/**
  * Register @a callback to be called whenever data is available on @a socket.
  *
  * @param socket Socket to read from

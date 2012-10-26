@@ -37,6 +37,7 @@ public SAL_Socket* SAL_Socket_Accept(SAL_Socket* listener);
 public void SAL_Socket_Close(SAL_Socket* socket);
 public uint32 SAL_Socket_Read(SAL_Socket* socket, uint8* const buffer, const uint32 bufferSize);
 public uint32 SAL_Socket_Write(SAL_Socket* socket, const uint8* const toWrite, const uint32 writeAmount);
+public uint32 SAL_Socket_EnsureWrite(SAL_Socket* socket, const uint8* const toWrite, const uint32 writeAmount, uint8 tries);
 public void SAL_Socket_SetReadCallback(SAL_Socket* socket, SAL_Socket_ReadCallback callback, void* const state);
 public void SAL_Socket_UnsetSocketCallback(SAL_Socket* socket);
 public uint16 SAL_Socket_HostToNetworkShort(uint16 value);
